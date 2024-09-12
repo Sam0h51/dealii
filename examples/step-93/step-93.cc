@@ -546,7 +546,7 @@ void Step3::set_nonnegative_c(hp::FEValues<2> &hp_fe_values)
     }
 
   if (active_c_indices.size() != 4)
-    std::cout << "An error occured while determining c indices" << std::endl;
+    std::cout << "An error occurred while determining c indices" << std::endl;
   std::cout << "c indices were " << active_c_indices[0] << " "
             << active_c_indices[1] << " " << active_c_indices[2] << " "
             << active_c_indices[3] << std::endl;
