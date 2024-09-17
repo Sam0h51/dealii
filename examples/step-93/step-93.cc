@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------
  *
- * Copyright (C) 1999 - 2023 by the deal.II authors
+ * Copyright (C) 1999 - 2024 by the deal.II authors
  *
  * This file is part of the deal.II library.
  *
@@ -14,8 +14,7 @@
  * ---------------------------------------------------------------------
 
  *
- * Authors: Wolfgang Bangerth, 1999,
- *          Guido Kanschat, 2011
+ * Authors: Sam Scheuerman, 2024
  */
 
 
@@ -55,6 +54,9 @@
 
 #include <deal.II/fe/fe_enriched.h>
 
+
+namespace Step93
+{
 using namespace dealii;
 
 template <int dim>
@@ -84,12 +86,12 @@ double Target_Function<2>::value(const Point<2>    &p,
 }
 
 template <int dim>
-class Heat_Plate_0 : public Function<dim>
+class Heat_Plate : public Function<dim>
 {
 public:
-  Heat_Plate_0()
+  Heat_Plate()
   {}
-  Heat_Plate_0(const Point<dim> &p);
+  Heat_Plate(const Point<dim> &p, const double radius);
 
   virtual double
   value(const Point<dim>                   &p,
@@ -97,117 +99,20 @@ public:
 
 private:
   const Point<dim> heat_center;
+  const double r;
 };
 
 template <int dim>
-Heat_Plate_0<dim>::Heat_Plate_0(const Point<dim> &p)
-  : heat_center(p)
+Heat_Plate<dim>::Heat_Plate(const Point<dim> &p, const double radius)
+  : heat_center(p),
+    r(radius)
 {}
 
-template <>
-double
-Heat_Plate_0<2>::value(const Point<2>                     &p,
+template <int dim>
+double Heat_Plate<dim>::value(const Point<dim>                     &p,
                        [[maybe_unused]] const unsigned int component) const
 {
-  if ((heat_center - p).norm() <= .2)
-    return 1;
-  else
-    return 0;
-}
-
-template <int dim>
-class Heat_Plate_1 : public Function<dim>
-{
-public:
-  Heat_Plate_1()
-  {}
-  Heat_Plate_1(const Point<dim> &p, const double radius);
-
-  virtual double
-  value(const Point<dim>                   &p,
-        [[maybe_unused]] const unsigned int component = 0) const override;
-
-private:
-  const Point<dim> heat_center;
-  const double     radius;
-};
-
-template <int dim>
-Heat_Plate_1<dim>::Heat_Plate_1(const Point<dim> &p, const double radius)
-  : heat_center(p)
-  , radius(radius)
-{}
-
-template <>
-double
-Heat_Plate_1<2>::value(const Point<2>                     &p,
-                       [[maybe_unused]] const unsigned int component) const
-{
-  if ((heat_center - p).norm() <= radius)
-    return 1;
-  else
-    return 0;
-}
-
-template <int dim>
-class Heat_Plate_2 : public Function<dim>
-{
-public:
-  Heat_Plate_2()
-  {}
-  Heat_Plate_2(const Point<dim> &p);
-
-  virtual double
-  value(const Point<dim>                   &p,
-        [[maybe_unused]] const unsigned int component = 0) const override;
-
-private:
-  const Point<dim> heat_center;
-};
-
-template <int dim>
-Heat_Plate_2<dim>::Heat_Plate_2(const Point<dim> &p)
-  : heat_center(p)
-{}
-
-template <>
-double
-Heat_Plate_2<2>::value(const Point<2>                     &p,
-                       [[maybe_unused]] const unsigned int component) const
-{
-  if ((heat_center - p).norm() <= .2)
-    return 1;
-  else
-    return 0;
-}
-
-template <int dim>
-class Heat_Plate_3 : public Function<dim>
-{
-public:
-  Heat_Plate_3()
-  {}
-  Heat_Plate_3(const Point<dim> &p);
-
-  virtual double
-  value(const Point<dim>                   &p,
-        [[maybe_unused]] const unsigned int component = 0) const override;
-
-private:
-  const Point<dim> heat_center;
-};
-
-template <int dim>
-Heat_Plate_3<dim>::Heat_Plate_3(const Point<dim> &p)
-  : heat_center(p)
-{}
-
-template <>
-double
-Heat_Plate_3<2>::value(const Point<2>                     &p,
-                       [[maybe_unused]] const unsigned int component) const
-{
-  if ((heat_center - p).norm() <= .2)
+  if ((heat_center - p).norm() <= r)
     return 1;
   else
     return 0;
@@ -250,12 +155,12 @@ Region_Indicator<2>::value(const Point<2>                     &p,
     return 0;
 }
 
-
-class Step3
+template<int dim>
+class Step93
 {
 public:
-  Step3();
-  ~Step3();
+  Step93();
+  ~Step93();
 
   void run();
 
@@ -267,14 +172,14 @@ private:
   void solve();
   void output_results() const;
 
-  void set_nonnegative_c(hp::FEValues<2> &hp_fe_values);
+  void set_nonnegative_c(hp::FEValues<dim> &hp_fe_values);
 
-  Triangulation<2> triangulation;
-  DoFHandler<2>    dof_handler;
+  Triangulation<dim> triangulation;
+  DoFHandler<dim>    dof_handler;
 
-  hp::FECollection<2> fe_collection;
-  hp::QCollection<2>  quadrature_collection;
-  hp::QCollection<1>  face_quadrature_collection;
+  hp::FECollection<dim> fe_collection;
+  hp::QCollection<dim>  quadrature_collection;
+  hp::QCollection<dim-1>  face_quadrature_collection;
 
   AffineConstraints<double> constraints;
 
@@ -291,32 +196,33 @@ private:
   // function centered at each point will be interpolated later in the program.
   // Since each step function is wider than a single cell, we must have
   // non-local dofs to capture this behavior.
-  const Point<2> heat_center_0, heat_center_1, heat_center_2, heat_center_3;
+  const Point<dim> heat_center_0, heat_center_1, heat_center_2, heat_center_3;
 };
 
-
-Step3::Step3()
+template<int dim>
+Step93<dim>::Step93()
   : dof_handler(triangulation)
   , heat_center_0(-.5, .5)
   , heat_center_1(.5, .5)
   , heat_center_2(-.5, -.5)
   , heat_center_3(.5, -.5)
 {
-  fe_collection.push_back(FESystem<2>(FE_Q<2>(2), 2, FE_Nothing<2>(), 1));
-  fe_collection.push_back(FESystem<2>(FE_Q<2>(2), 2, FE_DGQ<2>(0), 1));
+  fe_collection.push_back(FESystem<dim>(FE_Q<dim>(2), 2, FE_Nothing<dim>(), 1));
+  fe_collection.push_back(FESystem<dim>(FE_Q<dim>(2), 2, FE_DGQ<dim>(0), 1));
 
-  quadrature_collection.push_back(QGauss<2>(3));
-  face_quadrature_collection.push_back(QGauss<1>(3));
+  quadrature_collection.push_back(QGauss<dim>(3));
+  face_quadrature_collection.push_back(QGauss<dim-1>(3));
 }
 
-Step3::~Step3()
+template<int dim>
+Step93<dim>::~Step93()
 {
   dof_handler.clear();
 }
 
 
-
-void Step3::make_grid()
+template<int dim>
+void Step93<dim>::make_grid()
 {
   GridGenerator::hyper_cube(triangulation, -1, 1);
   triangulation.refine_global(7);
@@ -326,8 +232,8 @@ void Step3::make_grid()
 }
 
 
-
-void Step3::setup_system()
+template<int dim>
+void Step93<dim>::setup_system()
 {
   unsigned int number_of_c_active_cells =
     0; // Counts how many non-local dofs have been assigned
@@ -365,7 +271,7 @@ void Step3::setup_system()
   DoFTools::make_hanging_node_constraints(dof_handler, constraints);
   VectorTools::interpolate_boundary_values(dof_handler,
                                            0,
-                                           Functions::ZeroFunction<2>(3),
+                                           Functions::ZeroFunction<dim>(3),
                                            constraints);
   constraints.close();
 
@@ -375,7 +281,7 @@ void Step3::setup_system()
   // This is a dummy hp_fe_values that only updates the quadrature points and
   // values. I use this for the set_nonnegative_c function, and to determine
   // where to increase the sparse matrix.
-  hp::FEValues<2> hp_fe_values(fe_collection,
+  hp::FEValues<dim> hp_fe_values(fe_collection,
                                quadrature_collection,
                                update_quadrature_points | update_values);
 
@@ -422,7 +328,7 @@ void Step3::setup_system()
     {
       hp_fe_values.reinit(cell);
 
-      const FEValues<2> &fe_values = hp_fe_values.get_present_fe_values();
+      const FEValues<dim> &fe_values = hp_fe_values.get_present_fe_values();
 
       local_dof_indices.resize(fe_values.dofs_per_cell);
 
@@ -437,7 +343,7 @@ void Step3::setup_system()
                  phi_i_c = fe_values[c].value(i, q_index)*/
                 ;
 
-              const Point<2> q_point = fe_values.quadrature_point(q_index);
+              const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
               // Checks if q_point is within the desired radius of the
               // heat_center, and if phi_i_l is not zero at this quadrature
@@ -485,7 +391,8 @@ void Step3::setup_system()
 // want to correspond to the non-local degrees of freedom. I pass in an
 // hp::FEValues object so that I can evaluate to shape functions at the
 // quadrature points, and look for where they are non-zero.
-void Step3::set_nonnegative_c(hp::FEValues<2> &hp_fe_values)
+template<int dim>
+void Step93<dim>::set_nonnegative_c(hp::FEValues<dim> &hp_fe_values)
 {
   for (const auto &cell : dof_handler.active_cell_iterators())
     {
@@ -495,7 +402,7 @@ void Step3::set_nonnegative_c(hp::FEValues<2> &hp_fe_values)
 
           hp_fe_values.reinit(cell);
 
-          const FEValues<2> &fe_values = hp_fe_values.get_present_fe_values();
+          const FEValues<dim> &fe_values = hp_fe_values.get_present_fe_values();
 
           // I only care about the index of the DGQ elements, so we extract this
           // scalar field
@@ -553,16 +460,16 @@ void Step3::set_nonnegative_c(hp::FEValues<2> &hp_fe_values)
 }
 
 
-
-void Step3::assemble_system()
+template<int dim>
+void Step93<dim>::assemble_system()
 {
-  hp::FEValues<2> hp_fe_values(fe_collection,
+  hp::FEValues<dim> hp_fe_values(fe_collection,
                                quadrature_collection,
                                update_values | update_gradients |
                                  update_quadrature_points | update_JxW_values);
 
   // The function I want to match for the optimization problem
-  Target_Function<2> target_function(3);
+  Target_Function<dim> target_function(3);
   // const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
 
   Vector<double> rhs_coefficients(dof_handler.n_dofs());
@@ -582,8 +489,8 @@ void Step3::assemble_system()
 
   // NOTE: THIS IS NOT CURRENTLY USED, IGNORE THESE TWO LINES
   // If desired, create a region of interest for error constraint
-  const Point<2>            center_of_interest(.5, .5);
-  const Region_Indicator<2> region_indicator(center_of_interest, .2);
+  const Point<dim>            center_of_interest(.5, .5);
+  const Region_Indicator<dim> region_indicator(center_of_interest, .2);
 
   // set_nonnegative_c(hp_fe_values);
 
@@ -598,7 +505,7 @@ void Step3::assemble_system()
       cell_matrix = 0;
       cell_rhs    = 0;
 
-      const FEValues<2> &fe_values = hp_fe_values.get_present_fe_values();
+      const FEValues<dim> &fe_values = hp_fe_values.get_present_fe_values();
 
       local_dof_indices.resize(fe_values.dofs_per_cell);
 
@@ -616,7 +523,7 @@ void Step3::assemble_system()
                             phi_i_c = fe_values[c].value(i, q_index)*/
                 ;
 
-              const Tensor<1, 2> grad_i_u = fe_values[u].gradient(i, q_index),
+              const Tensor<1, dim> grad_i_u = fe_values[u].gradient(i, q_index),
                                  grad_i_l = fe_values[l].gradient(i, q_index);
 
               for (const unsigned int j : fe_values.dof_indices())
@@ -627,7 +534,7 @@ void Step3::assemble_system()
                              phi_j_c = fe_values[c].value(j, q_index)*/
                     ;
 
-                  const Tensor<1, 2> grad_j_u =
+                  const Tensor<1, dim> grad_j_u =
                                        fe_values[u].gradient(j, q_index),
                                      grad_j_l =
                                        fe_values[l].gradient(j, q_index);
@@ -645,12 +552,12 @@ void Step3::assemble_system()
 
 
 
-              const Point<2> q_point = fe_values.quadrature_point(q_index);
+              const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
-              const Heat_Plate_0<2> heat_plate_0(heat_center_0);
-              const Heat_Plate_1<2> heat_plate_1(heat_center_1, 0.2);
-              const Heat_Plate_2<2> heat_plate_2(heat_center_2);
-              const Heat_Plate_3<2> heat_plate_3(heat_center_3);
+              const Heat_Plate<dim> heat_plate_0(heat_center_0, 0.2),
+                                    heat_plate_1(heat_center_1, 0.2),
+                                    heat_plate_2(heat_center_2, 0.2),
+                                    heat_plate_3(heat_center_3, 0.2);
 
 
               system_matrix.add(local_dof_indices[i],
@@ -701,7 +608,7 @@ void Step3::assemble_system()
   std::map<types::global_dof_index, double> boundary_values;
   VectorTools::interpolate_boundary_values(dof_handler,
                                            0,
-                                           Functions::ZeroFunction<2>(3),
+                                           Functions::ZeroFunction<dim>(3),
                                            boundary_values);
   MatrixTools::apply_boundary_values(boundary_values,
                                      system_matrix,
@@ -710,8 +617,8 @@ void Step3::assemble_system()
 }
 
 
-
-void Step3::solve()
+template<int dim>
+void Step93<dim>::solve()
 {
   SolverControl            solver_control(500000, 1e-4 * system_rhs.l2_norm());
   SolverCG<Vector<double>> solver(solver_control);
@@ -723,8 +630,8 @@ void Step3::solve()
 }
 
 
-
-void Step3::output_results() const
+template<int dim>
+void Step93<dim>::output_results() const
 {
   std::vector<std::string> solution_names(1, "u");
   solution_names.emplace_back("l");
@@ -736,7 +643,7 @@ void Step3::output_results() const
   interpretation.push_back(DataComponentInterpretation::component_is_scalar);
 
 
-  DataOut<2> data_out;
+  DataOut<dim> data_out;
   data_out.add_data_vector(dof_handler,
                            solution,
                            solution_names,
@@ -748,8 +655,8 @@ void Step3::output_results() const
 
   // Now, we create a new dummy dof handler to output the target function and
   // heat plate values
-  DoFHandler<2> toy_dof_handler(triangulation);
-  const FE_Q<2> toy_fe(2);
+  DoFHandler<dim> toy_dof_handler(triangulation);
+  const FE_Q<dim> toy_fe(2);
   toy_dof_handler.distribute_dofs(toy_fe);
 
   Vector<double> target(toy_dof_handler.n_dofs()),
@@ -758,11 +665,11 @@ void Step3::output_results() const
     hot_plate_2(toy_dof_handler.n_dofs()),
     hot_plate_3(toy_dof_handler.n_dofs());
 
-  const Target_Function<2> target_function;
-  const Heat_Plate_0<2>    heat_plate_0(heat_center_0);
-  const Heat_Plate_1<2>    heat_plate_1(heat_center_1, 0.2);
-  const Heat_Plate_2<2>    heat_plate_2(heat_center_2);
-  const Heat_Plate_3<2>    heat_plate_3(heat_center_3);
+  const Target_Function<dim> target_function;
+  const Heat_Plate<dim>    heat_plate_0(heat_center_0, 0.2);
+  const Heat_Plate<dim>    heat_plate_1(heat_center_1, 0.2);
+  const Heat_Plate<dim>    heat_plate_2(heat_center_2, 0.2);
+  const Heat_Plate<dim>    heat_plate_3(heat_center_3, 0.2);
 
   VectorTools::interpolate(toy_dof_handler, target_function, target);
   VectorTools::interpolate(toy_dof_handler, heat_plate_0, hot_plate_0);
@@ -804,8 +711,8 @@ void Step3::output_results() const
 }
 
 
-
-void Step3::run()
+template<int dim>
+void Step93<dim>::run()
 {
   make_grid();
   setup_system();
@@ -813,15 +720,15 @@ void Step3::run()
   solve();
   output_results();
 }
-
+} //namespace Step93
 
 
 int main()
 {
-  deallog.depth_console(2);
+  dealii::deallog.depth_console(2);
 
-  Step3 laplace_problem;
-  laplace_problem.run();
+  Step93::Step93<2> heat_optimization_problem;
+  heat_optimization_problem.run();
 
   return 0;
 }
