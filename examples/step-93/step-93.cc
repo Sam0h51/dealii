@@ -307,7 +307,6 @@ namespace Step93
     for (auto non_local_index : non_zero_c)
       {
         active_c_indices.push_back(non_local_index);
-        std::cout << "An index: " << non_local_index << std::endl;
       }
 
 
@@ -341,10 +340,7 @@ namespace Step93
           {
             for (const unsigned int i : fe_values.dof_indices())
               {
-                const double /* phi_i_u = fe_values[u].value(i, q_index), */
-                  phi_i_l = fe_values[l].value(i, q_index) /*,
-                   phi_i_c = fe_values[c].value(i, q_index)*/
-                  ;
+                const double phi_i_l = fe_values[l].value(i, q_index);
 
                 const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
@@ -388,82 +384,6 @@ namespace Step93
     system_rhs.reinit(dof_handler.n_dofs());
   }
 
-  // This function loops through all the cells until it finds the cells with fe
-  // index 1. It then loops over all dof indices and then all quadrature points
-  // of that dof. The goal is to determine the global index of the n dofs that
-  // we want to correspond to the non-local degrees of freedom. I pass in an
-  // hp::FEValues object so that I can evaluate to shape functions at the
-  // quadrature points, and look for where they are non-zero.
-  template <int dim>
-  void Step93<dim>::set_nonnegative_c(hp::FEValues<dim> &hp_fe_values)
-  {
-    for (const auto &cell : dof_handler.active_cell_iterators())
-      {
-        if (cell->active_fe_index() == 1)
-          {
-            // cell->set_active_fe_index(1);
-
-            hp_fe_values.reinit(cell);
-
-            const FEValues<dim> &fe_values =
-              hp_fe_values.get_present_fe_values();
-
-            // I only care about the index of the DGQ elements, so we extract
-            // this scalar field
-            const FEValuesExtractors::Scalar c(2);
-
-            // I use this value to add up all values at each quadrature point.
-            // If this is ever non-zero, then I have found an index where the
-            // DGQ element is set to 1.
-            double total_value;
-
-            std::cout << "DoFs on non-boundary cell is "
-                      << fe_values.dofs_per_cell << std::endl;
-
-            std::vector<types::global_dof_index> local_dof_indices(
-              cell->get_fe().dofs_per_cell);
-
-            cell->get_dof_indices(local_dof_indices);
-
-            for (const unsigned int dof_index : fe_values.dof_indices())
-              {
-                total_value = 0;
-                // std::cout << "dof_index is " << dof_index << std::endl;
-
-                // Loop over the quadratur points, add the absolute value of the
-                // DGQ element at each quadrature point to total_value
-                for (const unsigned int q_index :
-                     fe_values.quadrature_point_indices())
-                  {
-                    /* std::cout << "\t Value at the "
-                              << q_index
-                              << "th quadrature point is "
-                              << fe_values[c].value(dof_index, q_index)
-                              << std::endl; */
-                    total_value +=
-                      std::abs(fe_values[c].value(dof_index, q_index));
-                  }
-                // Check if total_value is not 0, and store the index in the
-                // member std::vector if so.
-                if (total_value >= 1e-6)
-                  active_c_indices.push_back(local_dof_indices[dof_index]);
-              }
-
-            // For this program, I only need 4 non-local dofs, so we stop the
-            // loop once the indices for these have been found.
-            if (active_c_indices.size() >= 4)
-              break;
-          }
-      }
-
-    if (active_c_indices.size() != 4)
-      std::cout << "An error occurred while determining c indices" << std::endl;
-    std::cout << "c indices were " << active_c_indices[0] << " "
-              << active_c_indices[1] << " " << active_c_indices[2] << " "
-              << active_c_indices[3] << std::endl;
-  }
-
-
   template <int dim>
   void Step93<dim>::assemble_system()
   {
@@ -475,13 +395,10 @@ namespace Step93
 
     // The function I want to match for the optimization problem
     Target_Function<dim> target_function(3);
-    // const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
 
     Vector<double> rhs_coefficients(dof_handler.n_dofs());
 
-    std::cout << "Pre Interpolate" << std::endl;
     VectorTools::interpolate(dof_handler, target_function, rhs_coefficients);
-    std::cout << "Post Interpolate" << std::endl;
 
     FullMatrix<double> cell_matrix;
     Vector<double>     cell_rhs;
@@ -491,13 +408,6 @@ namespace Step93
     const FEValuesExtractors::Scalar u(0);
     const FEValuesExtractors::Scalar l(1);
     const FEValuesExtractors::Scalar c(2);
-
-    // NOTE: THIS IS NOT CURRENTLY USED, IGNORE THESE TWO LINES
-    // If desired, create a region of interest for error constraint
-    const Point<dim>            center_of_interest(.5, .5);
-    const Region_Indicator<dim> region_indicator(center_of_interest, .2);
-
-    // set_nonnegative_c(hp_fe_values);
 
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
@@ -524,9 +434,7 @@ namespace Step93
             for (const unsigned int i : fe_values.dof_indices())
               {
                 const double phi_i_u = fe_values[u].value(i, q_index),
-                             phi_i_l = fe_values[l].value(i, q_index) /*,
-                              phi_i_c = fe_values[c].value(i, q_index)*/
-                  ;
+                             phi_i_l = fe_values[l].value(i, q_index);
 
                 const Tensor<1, dim> grad_i_u =
                                        fe_values[u].gradient(i, q_index),
@@ -535,11 +443,7 @@ namespace Step93
 
                 for (const unsigned int j : fe_values.dof_indices())
                   {
-                    const double phi_j_u = fe_values[u].value(j, q_index) /* ,
-                                  phi_j_l = fe_values[l].value(j, q_index) */
-                                                                          /*,
-                               phi_j_c = fe_values[c].value(j, q_index)*/
-                      ;
+                    const double phi_j_u = fe_values[u].value(j, q_index);
 
                     const Tensor<1, dim> grad_j_u =
                                            fe_values[u].gradient(j, q_index),
@@ -549,8 +453,6 @@ namespace Step93
                     cell_matrix(i, j) += 2 * phi_i_u * phi_j_u * JxW;
                     cell_matrix(i, j) += -grad_i_u * grad_j_l * JxW;
                     cell_matrix(i, j) += -grad_i_l * grad_j_u * JxW;
-                    // cell_matrix(i, j) += phi_i_l*phi_j_c*JxW;
-                    // cell_matrix(i, j) += phi_i_c*phi_j_l*JxW;
 
                     cell_rhs(i) +=
                       2 * (rhs_coefficients[local_dof_indices[j]] * // u bar
@@ -600,15 +502,6 @@ namespace Step93
 
         constraints.distribute_local_to_global(
           cell_matrix, cell_rhs, local_dof_indices, system_matrix, system_rhs);
-
-        /* for (const unsigned int i : fe_values.dof_indices())
-          for (const unsigned int j : fe_values.dof_indices())
-            system_matrix.add(local_dof_indices[i],
-                              local_dof_indices[j],
-                              cell_matrix(i, j));
-
-        for (const unsigned int i : fe_values.dof_indices())
-          system_rhs(local_dof_indices[i]) += cell_rhs(i); */
       }
 
 
