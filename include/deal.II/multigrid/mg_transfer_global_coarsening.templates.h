@@ -837,25 +837,11 @@ namespace internal
 
           is_dst_remote_potentially_relevant.subtract_set(is_dst_locally_owned);
 
-          std::vector<unsigned int> owning_ranks_of_ghosts(
-            is_dst_remote_potentially_relevant.n_elements());
-
-          {
-            Utilities::MPI::internal::ComputeIndexOwner::
-              ConsensusAlgorithmsPayload process(
-                is_dst_locally_owned,
-                is_dst_remote_potentially_relevant,
-                communicator,
-                owning_ranks_of_ghosts,
-                false);
-
-            Utilities::MPI::ConsensusAlgorithms::Selector<
-              std::vector<
-                std::pair<types::global_cell_index, types::global_cell_index>>,
-              std::vector<unsigned int>>
-              consensus_algorithm;
-            consensus_algorithm.run(process, communicator);
-          }
+          const std::vector<unsigned int> owning_ranks_of_ghosts =
+            Utilities::MPI::compute_index_owner(
+              is_dst_locally_owned,
+              is_dst_remote_potentially_relevant,
+              communicator);
 
           for (unsigned i = 0;
                i < is_dst_remote_potentially_relevant.n_elements();
@@ -3961,22 +3947,10 @@ MGTwoLevelTransfer<dim, VectorType>::reinit(
 
       const MPI_Comm communicator = dof_handler_fine.get_mpi_communicator();
 
-      std::vector<unsigned int> owning_ranks(
-        is_locally_owned_coarse.n_elements());
-
-      Utilities::MPI::internal::ComputeIndexOwner::ConsensusAlgorithmsPayload
-        process(is_locally_owned_fine,
-                is_locally_owned_coarse,
-                communicator,
-                owning_ranks,
-                false);
-
-      Utilities::MPI::ConsensusAlgorithms::Selector<
-        std::vector<
-          std::pair<types::global_cell_index, types::global_cell_index>>,
-        std::vector<unsigned int>>
-        consensus_algorithm;
-      consensus_algorithm.run(process, communicator);
+      const std::vector<unsigned int> owning_ranks =
+        Utilities::MPI::compute_index_owner(is_locally_owned_fine,
+                                            is_locally_owned_coarse,
+                                            communicator);
 
       bool all_cells_found = true;
 
@@ -4309,8 +4283,8 @@ MGTransferMF<dim, Number>::initialize_constraints(
 template <int dim, typename Number>
 void
 MGTransferMF<dim, Number>::initialize_internal_transfer(
-  const DoFHandler<dim>                       &dof_handler,
-  const SmartPointer<const MGConstrainedDoFs> &mg_constrained_dofs)
+  const DoFHandler<dim>                          &dof_handler,
+  const ObserverPointer<const MGConstrainedDoFs> &mg_constrained_dofs)
 {
   const unsigned int min_level = 0;
   const unsigned int max_level =
