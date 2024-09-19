@@ -60,10 +60,10 @@ namespace Step93
   using namespace dealii;
 
   template <int dim>
-  class Target_Function : public Function<dim>
+  class TargetFunction : public Function<dim>
   {
   public:
-    Target_Function(const unsigned int n_components = 1)
+    TargetFunction(const unsigned int n_components = 1)
       : Function<dim>(n_components){};
 
     virtual double value(const Point<dim>  &p,
@@ -71,7 +71,7 @@ namespace Step93
   };
 
   template <>
-  double Target_Function<2>::value(const Point<2>    &p,
+  double TargetFunction<2>::value(const Point<2>    &p,
                                    const unsigned int component) const
   {
     if (component == 0)
@@ -85,7 +85,35 @@ namespace Step93
       return 0;
   }
 
-  template <int dim>
+  template<int dim>
+  class CircularIndicatorFunction : public Function<dim>
+  {
+    public:
+      CircularIndicatorFunction() {}
+      CircularIndicatorFunction(const Point<dim> &center, const double radius);
+
+      virtual double value(const Point<dim> &p, [[maybe_unused]] const unsigned int component = 0) const override;
+    
+    private:
+      const Point<dim> center;
+      const double     radius;
+  };
+
+  template<int dim>
+  CircularIndicatorFunction<dim>::CircularIndicatorFunction(const Point<dim> &center, const double radius)
+    : center(center), radius(radius)
+  {}
+
+  template<int dim>
+  double CircularIndicatorFunction<dim>::value(const Point<dim> &p, [[maybe_unused]] const unsigned int component) const
+  {
+    if((center-p).norm() <= radius)
+      return 1;
+    else
+      return 0;
+  }
+
+  /* template <int dim>
   class Heat_Plate : public Function<dim>
   {
   public:
@@ -117,9 +145,9 @@ namespace Step93
       return 1;
     else
       return 0;
-  }
+  } */
 
-  template <int dim>
+  /* template <int dim>
   class Region_Indicator : public Function<dim>
   {
   public:
@@ -154,7 +182,7 @@ namespace Step93
       return 1;
     else
       return 0;
-  }
+  } */
 
   template <int dim>
   class Step93
@@ -394,7 +422,7 @@ namespace Step93
                                      update_JxW_values);
 
     // The function I want to match for the optimization problem
-    Target_Function<dim> target_function(3);
+    TargetFunction<dim> target_function(3);
 
     Vector<double> rhs_coefficients(dof_handler.n_dofs());
 
@@ -463,7 +491,7 @@ namespace Step93
 
                 const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
-                const Heat_Plate<dim> heat_plate_0(heat_center_0, 0.2),
+                const CircularIndicatorFunction<dim> heat_plate_0(heat_center_0, 0.2),
                   heat_plate_1(heat_center_1, 0.2),
                   heat_plate_2(heat_center_2, 0.2),
                   heat_plate_3(heat_center_3, 0.2);
@@ -565,11 +593,11 @@ namespace Step93
       hot_plate_2(toy_dof_handler.n_dofs()),
       hot_plate_3(toy_dof_handler.n_dofs());
 
-    const Target_Function<dim> target_function;
-    const Heat_Plate<dim>      heat_plate_0(heat_center_0, 0.2);
-    const Heat_Plate<dim>      heat_plate_1(heat_center_1, 0.2);
-    const Heat_Plate<dim>      heat_plate_2(heat_center_2, 0.2);
-    const Heat_Plate<dim>      heat_plate_3(heat_center_3, 0.2);
+    const TargetFunction<dim> target_function;
+    const CircularIndicatorFunction<dim>      heat_plate_0(heat_center_0, 0.2);
+    const CircularIndicatorFunction<dim>      heat_plate_1(heat_center_1, 0.2);
+    const CircularIndicatorFunction<dim>      heat_plate_2(heat_center_2, 0.2);
+    const CircularIndicatorFunction<dim>      heat_plate_3(heat_center_3, 0.2);
 
     VectorTools::interpolate(toy_dof_handler, target_function, target);
     VectorTools::interpolate(toy_dof_handler, heat_plate_0, hot_plate_0);
@@ -582,7 +610,7 @@ namespace Step93
     hot_plate_2 *= solution[active_c_indices[2]];
     hot_plate_3 *= solution[active_c_indices[3]];
 
-    data_out.add_data_vector(toy_dof_handler, target, "Target_Function");
+    data_out.add_data_vector(toy_dof_handler, target, "TargetFunction");
     data_out.add_data_vector(toy_dof_handler, hot_plate_0, "Heat_Source_0");
     data_out.add_data_vector(toy_dof_handler, hot_plate_1, "Heat_Source_1");
     data_out.add_data_vector(toy_dof_handler, hot_plate_2, "Heat_Source_2");
