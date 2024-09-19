@@ -185,11 +185,11 @@ namespace Step93
   } */
 
   template <int dim>
-  class Step93
+  class OptimalControlProblem
   {
   public:
-    Step93();
-    ~Step93();
+    OptimalControlProblem();
+    ~OptimalControlProblem();
 
     void run();
 
@@ -229,7 +229,7 @@ namespace Step93
   };
 
   template <int dim>
-  Step93<dim>::Step93()
+  OptimalControlProblem<dim>::OptimalControlProblem()
     : dof_handler(triangulation)
     , heat_center_0(-.5, .5)
     , heat_center_1(.5, .5)
@@ -245,14 +245,14 @@ namespace Step93
   }
 
   template <int dim>
-  Step93<dim>::~Step93()
+  OptimalControlProblem<dim>::~OptimalControlProblem()
   {
     dof_handler.clear();
   }
 
 
   template <int dim>
-  void Step93<dim>::make_grid()
+  void OptimalControlProblem<dim>::make_grid()
   {
     GridGenerator::hyper_cube(triangulation, -1, 1);
     triangulation.refine_global(7);
@@ -263,7 +263,7 @@ namespace Step93
 
 
   template <int dim>
-  void Step93<dim>::setup_system()
+  void OptimalControlProblem<dim>::setup_system()
   {
     unsigned int number_of_c_active_cells =
       0; // Counts how many non-local dofs have been assigned
@@ -413,7 +413,7 @@ namespace Step93
   }
 
   template <int dim>
-  void Step93<dim>::assemble_system()
+  void OptimalControlProblem<dim>::assemble_system()
   {
     hp::FEValues<dim> hp_fe_values(fe_collection,
                                    quadrature_collection,
@@ -546,7 +546,7 @@ namespace Step93
 
 
   template <int dim>
-  void Step93<dim>::solve()
+  void OptimalControlProblem<dim>::solve()
   {
     SolverControl solver_control(500000, 1e-4 * system_rhs.l2_norm());
     SolverCG<Vector<double>> solver(solver_control);
@@ -559,7 +559,7 @@ namespace Step93
 
 
   template <int dim>
-  void Step93<dim>::output_results() const
+  void OptimalControlProblem<dim>::output_results() const
   {
     std::vector<std::string> solution_names(1, "u");
     solution_names.emplace_back("l");
@@ -640,7 +640,7 @@ namespace Step93
 
 
   template <int dim>
-  void Step93<dim>::run()
+  void OptimalControlProblem<dim>::run()
   {
     make_grid();
     setup_system();
@@ -655,7 +655,7 @@ int main()
 {
   dealii::deallog.depth_console(2);
 
-  Step93::Step93<2> heat_optimization_problem;
+  Step93::OptimalControlProblem<2> heat_optimization_problem;
   heat_optimization_problem.run();
 
   return 0;
