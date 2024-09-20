@@ -1,3 +1,180 @@
 <a name="step-93-Intro"></a>
 <h1>Introduction</h1>
 
+In all previous tutorial programs, we have only ever dealt with
+discretizations of partial differential equations posed on a
+triangulation where, then, every degree of freedom was associated with
+a node that was clearly part of one cell or another. This was true
+whether we were solving a single differential equation (say, in step-4
+or step-8), or a system of coupled equations (step-8, step-22, and
+many others). In other words, the *unknowns* we were considering were
+always functions of space (and, sometimes time) that we discretized on
+a triangulation.
+
+TODO: Sam, feel free to adjust the names of the variables as appropriate. Then delete this comment.
+
+But there are also situations where we have unknowns in the equations
+we consider that are *not* functions but are *scalars* instead. The
+example we will consider here to illustrate this kind of situation is
+an optimization problem: Let's assume we have a body to which we have
+attached four heaters. How should we set the power levels $f_1,\ldots,
+f_4$ of these four heaters so that the temperature $T(\mathbf x)$ of
+the body is as close as possible to a desired state? The issue here is
+that we have one unknown that is a function (namely, the temperature
+$T(\mathbf x)$) for which we can apply the usual finite element
+approximation, but we also have four scalars $f_i$ that are *not*
+functions and that, after discretization of the whole problem, are not
+tied to one of the cells of the mesh. As a consequence, we call these
+unknowns *non-local degrees of freedom* to represent that they are not
+tied to a specific locality: They represent something that does not
+depend to the spatial variable $\mathbf x$ at all, and is not the
+result of a discretization process.
+
+Before going into how we solve this issue, let us first state the concrete set of equations.
+
+TODO: Sam, please complete. State in words what the model is, then
+state in equations, and derive the optimality conditions we want to
+solve. Then delete this comment.
+
+
+@sect3{What is the problem?}
+
+The straightforward way to deal with the equations above is to define
+an FESystem object with two components, one for the temperature
+$T(\mathbf x)$ and one for the Lagrange multiplier $\lambda(\mathbf
+x)$. This would work in much the same way as you define system
+elements in all other @ref vector_valued "vector valued problems".
+You will then end up with $N_T$ variables for the finite element
+approximation of the temperature, and $N_\lambda$ variables for the
+finite element approximation of the Lagrange multiplier, and all of
+these $N_T+N_\lambda$ unknowns live on the triangulation in the form
+of a DoFHAndler object.
+
+The problem then is that what you really want is a linear system of
+$N=N_T+N_\lambda+N_f$ unknowns that includes the $N_f=4$ degrees of
+freedom for the source strengths we are trying to optimize for: We
+need a matrix of size $N\times N$, and solution and right hand side
+vectors of size $N$. Moreover, if you try to build a block linear
+system because that's how your linear solver is structured, you
+probably want a $3\times 3$ block structure for the matrix, and three
+blocks for the vectors, even though the finite element and the
+DoFHandler only know of two solution components.
+
+Conceptually, of course, there is nothing wrong with creating matrices
+and vectors that have sizes that don't match the number of unknowns in
+a DoFHandler. You just need a way to translate between the index of a
+degree of freedom in a DoFHandler and the corresponding row and column
+in a linear system. Here, perhaps one would make the choice that the
+mesh-based degrees of freedom (which the DoFHandler numbers from zero
+to $N_T+N_\lambda-1$) come first, and the four $N_f$ additional scalar
+unknowns come last. The fact that we need to spell out such a
+convention -- which in most codes would be entirely implicit, rather
+than enforced through explicit means -- should give you a first hint
+that something with this kind of design is wrong. For example, we can
+not renumber all degrees of freedom with the functions in
+DoFRenumbering in arbitrary ways if we want the $N_f$ additional
+variables always at the end.
+
+Precisely because it is so easy to make mistakes and because it is so
+restricting to have implicit conventions like "Yes, your matrix can be
+larger than the number of DoFs in the DoFHandler; but it can't be
+smaller", deal.II a long time ago made the decision that a lot of
+functions test that the sizes of vectors and matrices is equal to the
+number of unknowns in a DoFHandler. For example,
+DoFTools::make_sparsity_pattern() takes a DoFHandler and expects that
+the sparsity pattern has as many rows and columns as there are DoFs in
+the DoFHandler. So does
+DoFTools::make_hanging_node_constraints(). VectorTools::interpolate_boundary_values()
+uses the same convention. Many many other functions do too, and they
+all in fact check that this is true and will terminate the program if
+it is not. This is because one can find many many bugs in codes this
+way, and it also allows for an assumption that is so obvious that we
+have never stated it so far: The degree of freedom with index $i$
+corresponds to row $i$ of the linear system and column $i$ of the
+matrix. If we allowed sizes to differ, we would have to have a way to
+make this connection, and the way better be explicit (by way of a
+function that translates from DoF index to row and column) or there
+would be no end to the possibility of introducing bugs.
+
+In other words, the fact that we want to have $N_T+N_\lambda$ degrees
+of freedom in the DoFHandler, but matrices and vectors with
+$N_T+N_\lambda+N_f$ rows and columns does not work with deal.II's
+underlying design decisions. Creating matrices and vectors that happen
+to be larger is going to trigger lots of assertions, and for good
+reasons.
+
+
+
+@sect3{How do we address this?}
+
+So, then, how are we going to address this? At its core, what needs to
+happen is that the DoFHandler knows about the additional degrees of
+freedom. The question is how we are going to teach it about these
+"nonlocal" degrees of freedom -- they are, after all, not ones that
+are associated with vertices, edges, faces, or cells of the mesh as
+the usual finite element degrees of freedom are. The approach we are
+going to use is not what one would generally call "obvious" or
+"natural", but it does fit into the infrastructure deal.II provides
+(even though this infrastructure was originally built for other
+purposes).
+
+The key to the following is that deal.II allows (i) using different
+finite elements on different cells, originally intended to support
+$hp$ finite elements; and (ii) has elements that have no degrees of
+freedom. We have used these features in other tutorial programs:
+step-27 and step-75 for the use of different elements (of the same
+family but with different polynomial degrees -- i.e., the $hp$ finite
+element method), and step-46 for multiphysics problems where some
+variables live only on some cells.
+
+We will (ab)use the general approach used in step-46 for our purposes
+here. Specifically, on the first four cells of the mesh, we will
+define a finite element that has a temperature component and a
+Lagrange multiplier component (both of which are the usual FE_Q
+element) plus a third vector component that is piecewise constant
+(FE_DGQ(0)) and so has one additional degree of freedom. On all other
+cells, the finite element used has the same temperature and Lagrange
+multiplier components, but the third component is of type FE_Nothing
+and so has no degrees of freedom at all. The end result of this
+approach is that nearly every function you have ever used will work as
+one would expect. Specifically, the end result is the following:
+
+- We have exactly four additional degrees of freedom, located on the
+  first four cells.
+- We can use DoFRenumbers::component_wise() to sort degrees of freedom
+  explicitly into the order described above (rather than using an
+  implicit convention). In particular, if we really wanted to, we could
+  also ask for the nonlocal degrees of freedom to be numbered *first*
+  rather than last -- because they are on equal footing to all of the other
+  field-based variables.
+- Because the finite elements used on all cells have three vector components,
+  it is straightforward to use functions such as
+  DoFTools::count_dofs_per_fe_block() to create a $3\times 3$ block structure
+  of the linear system.
+- The size of matrices and vectors corresponds to the number of degrees
+  of freedom in the DoFHandler.
+- The additional degrees of freedom end up in the output files created by
+  DataOut because they are finite element fields -- just fields of a very
+  specific kind.
+
+To be true, not *everything* works in a totally natural way. Most
+concretely, this has to do with the fact that to the DoFHandler, the
+nonlocal degrees of freedom only live on one cell each. On the other
+hand, from the perspective of the PDE, we need these nonlocal DoFs on
+all cells that intersect the areas in which the heating is applied; in
+general, however, `cell->get_dof_indices()` will not provide any DoF
+indices for the third vector component on these cells because on these
+cells that third vector component uses FE_Nothing. As a consequence,
+we will have to do some extra work when building sparsity patterns
+(which couple the degrees of freedom located on the same cell) and the
+system matrix/right hand side.
+
+
+
+@sect4{What concrete steps do we need to take?}
+
+TODO: Sam, feel free to describe in a paragraph each all of the places
+where you have to do something special. For example, find the DoF
+indices of the nonlocal DoFs; build the sparsity pattern; build matrix
+entries; etc.
+
