@@ -11,17 +11,15 @@ many others). In other words, the *unknowns* we were considering were
 always functions of space (and, sometimes time) that we discretized on
 a triangulation.
 
-TODO: Sam, feel free to adjust the names of the variables as appropriate. Then delete this comment.
-
 But there are also situations where we have unknowns in the equations
 we consider that are *not* functions but are *scalars* instead. The
 example we will consider here to illustrate this kind of situation is
 an optimization problem: Let's assume we have a body to which we have
 attached four heaters. How should we set the power levels $f_1,\ldots,
-f_4$ of these four heaters so that the temperature $T(\mathbf x)$ of
+f_4$ of these four heaters so that the temperature $u(\mathbf x)$ of
 the body is as close as possible to a desired state? The issue here is
 that we have one unknown that is a function (namely, the temperature
-$T(\mathbf x)$) for which we can apply the usual finite element
+$u(\mathbf x)$) for which we can apply the usual finite element
 approximation, but we also have four scalars $f_i$ that are *not*
 functions and that, after discretization of the whole problem, are not
 tied to one of the cells of the mesh. As a consequence, we call these
@@ -32,6 +30,68 @@ result of a discretization process.
 
 Before going into how we solve this issue, let us first state the concrete set of equations.
 
+We want to find a solution $u$ to the heat equation $-\Delta u = f$ which is as close as
+possible to a desired solution $\overline{u}$. We can formulate this as an optimization problem
+
+@f{align*}{
+  \min\lim_{u} &||u-\overline{u}||^2\\
+  \text{s.t.} & -\Delta u = f.
+@f}
+
+To make this more compact, we phrase it as a Lagrangian
+
+@f{align*}{
+  L = ||u - \overline{u}||^2 - (\lambda, -\Delta u - f),
+@f}
+
+where $\lambda$ is a Lagrangian multiplier and $(\cdot, \cdot)$ denotes a scalar 
+product. We do this because finding a minimizer of $L$
+is equivalent to solving the original optimization problem, and we can find a minimizer
+of $L$ by finding roots of its derivatives. At this point, we have a choice: we can either
+derive the optimality conditions first, then discretize the problem (in the literature this
+is called the optimize then discretize approach), or we can first discretize $L$ and then
+determine the optimality conditions for the discrete system (discretize then optimize). We
+will use the second approach here. The discretized Lagrangian is
+
+@f{align*}{
+  L_n =& ||U - \overline{U}||^2 - (\Lambda, -\Delta U - F)\\
+   =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j 
+   - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right] 
+   - \sum_{i=0}^n\sum_{j=0}^n\left[\Lambda^iU^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
+   + \sum_{i=0}^n \left[\Lambda^i\int_{\Omega}\varphi_i f\right].
+@f}
+
+Further, suppose we can write the right hand side function $f$ as
+
+@f{align*}{
+  f = \sum_{k=0}^m C^k f_k,
+@f}
+
+where each $f_k$ is something simple (in this example, a $\chi$ function). Then the Lagrangian becomes
+
+@f{align*}{
+  L_n =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j 
+   - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right] 
+   - \sum_{i=0}^n\sum_{j=0}^n\left[\Lambda^jU^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
+   + \sum_{j=0}^n\sum_{k=0}^m \left[\Lambda^iC^k\int_{\Omega}\varphi_i f_k\right].
+@f}
+
+To find a minimum, we take a partial derivative with respect to each $U^i$,
+ $\Lambda^j$, and $C^k$. The derivative have the following form:
+
+@f{align*}{
+  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
+   - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]\\
+  \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
+  + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k\\
+  \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k.
+@f}
+
+As with many other minimization problems, we can observe that for a minimum to occur,
+these derivatives must all be 0. This gives us $n + n + m$ linear equations to solve
+for the coefficient vectors $U$, $\Lambda$, and $C$.
+
+
 TODO: Sam, please complete. State in words what the model is, then
 state in equations, and derive the optimality conditions we want to
 solve. Then delete this comment.
@@ -41,17 +101,17 @@ solve. Then delete this comment.
 
 The straightforward way to deal with the equations above is to define
 an FESystem object with two components, one for the temperature
-$T(\mathbf x)$ and one for the Lagrange multiplier $\lambda(\mathbf
+$u(\mathbf x)$ and one for the Lagrange multiplier $\lambda(\mathbf
 x)$. This would work in much the same way as you define system
 elements in all other @ref vector_valued "vector valued problems".
-You will then end up with $N_T$ variables for the finite element
-approximation of the temperature, and $N_\lambda$ variables for the
+You will then end up with $N_U$ variables for the finite element
+approximation of the temperature, and $N_\Lambda$ variables for the
 finite element approximation of the Lagrange multiplier, and all of
-these $N_T+N_\lambda$ unknowns live on the triangulation in the form
+these $N_U+N_\Lambda$ unknowns live on the triangulation in the form
 of a DoFHAndler object.
 
 The problem then is that what you really want is a linear system of
-$N=N_T+N_\lambda+N_f$ unknowns that includes the $N_f=4$ degrees of
+$N=N_U+N_\Lambda+N_f$ unknowns that includes the $N_f=4$ degrees of
 freedom for the source strengths we are trying to optimize for: We
 need a matrix of size $N\times N$, and solution and right hand side
 vectors of size $N$. Moreover, if you try to build a block linear
@@ -66,7 +126,7 @@ a DoFHandler. You just need a way to translate between the index of a
 degree of freedom in a DoFHandler and the corresponding row and column
 in a linear system. Here, perhaps one would make the choice that the
 mesh-based degrees of freedom (which the DoFHandler numbers from zero
-to $N_T+N_\lambda-1$) come first, and the four $N_f$ additional scalar
+to $N_U+N_\Lambda-1$) come first, and the four $N_f$ additional scalar
 unknowns come last. The fact that we need to spell out such a
 convention -- which in most codes would be entirely implicit, rather
 than enforced through explicit means -- should give you a first hint
@@ -96,9 +156,9 @@ make this connection, and the way better be explicit (by way of a
 function that translates from DoF index to row and column) or there
 would be no end to the possibility of introducing bugs.
 
-In other words, the fact that we want to have $N_T+N_\lambda$ degrees
+In other words, the fact that we want to have $N_U+N_\Lambda$ degrees
 of freedom in the DoFHandler, but matrices and vectors with
-$N_T+N_\lambda+N_f$ rows and columns does not work with deal.II's
+$N_U+N_\Lambda+N_f$ rows and columns does not work with deal.II's
 underlying design decisions. Creating matrices and vectors that happen
 to be larger is going to trigger lots of assertions, and for good
 reasons.
@@ -157,7 +217,7 @@ one would expect. Specifically, the end result is the following:
   DataOut because they are finite element fields -- just fields of a very
   specific kind.
 
-To be true, not *everything* works in a totally natural way. Most
+In truth, not *everything* works in a totally natural way. Most
 concretely, this has to do with the fact that to the DoFHandler, the
 nonlocal degrees of freedom only live on one cell each. On the other
 hand, from the perspective of the PDE, we need these nonlocal DoFs on
@@ -172,6 +232,32 @@ system matrix/right hand side.
 
 
 @sect4{What concrete steps do we need to take?}
+
+There are three places in the standard finite element code where we will
+need to take special care: constructing the sparsity pattern, constructing
+the system matrix, and outputting results.
+
+When we construct the sparsity pattern, deal.ii implicitly assumes that
+only dofs that share a cell could have a non-zero entry in the matrix.
+Consequently, when working with non-local dofs, the sparsity pattern that
+DoFTools::make_sparsity_pattern creates will omit entries that in fact
+we want to fill. To fix this, after creating the sparsity pattern we
+need to loop over all cells in the mesh and check whether the dofs on
+that cell overlap with regions where each $f_i$ is nonzero. If they do,
+then we neeed to add an entry to the sparsity pattern at location
+(dof_index, nonlocal_dof_index) and (nonlocal_dof_index, dof_index).
+Note that we need to add two entries because it doesn't matter whether
+the nonlocal dof is the row or column index, the entry could be
+nonzero. In this example, we further refine this by only adding entries
+where the $\Lambda$ component of the FESystem is nonzero, because we only
+deal with the nonlocal functions in the equations stemming from the
+$\Lambda^j$ and $C^k$ derivatives.
+
+We take a similar approach when constructing the system matrix. We do
+the standard loop over cells, quadrature points, and dof indices, but
+
+
+
 
 TODO: Sam, feel free to describe in a paragraph each all of the places
 where you have to do something special. For example, find the DoF
