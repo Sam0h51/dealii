@@ -72,7 +72,7 @@ namespace Step93
 
   template <>
   double TargetFunction<2>::value(const Point<2>    &p,
-                                   const unsigned int component) const
+                                  const unsigned int component) const
   {
     if (component == 0)
       {
@@ -85,29 +85,37 @@ namespace Step93
       return 0;
   }
 
-  template<int dim>
+  template <int dim>
   class CircularIndicatorFunction : public Function<dim>
   {
-    public:
-      CircularIndicatorFunction() {}
-      CircularIndicatorFunction(const Point<dim> &center, const double radius);
+  public:
+    CircularIndicatorFunction()
+    {}
+    CircularIndicatorFunction(const Point<dim> &center, const double radius);
 
-      virtual double value(const Point<dim> &p, [[maybe_unused]] const unsigned int component = 0) const override;
-    
-    private:
-      const Point<dim> center;
-      const double     radius;
+    virtual double
+    value(const Point<dim>                   &p,
+          [[maybe_unused]] const unsigned int component = 0) const override;
+
+  private:
+    const Point<dim> center;
+    const double     radius;
   };
 
-  template<int dim>
-  CircularIndicatorFunction<dim>::CircularIndicatorFunction(const Point<dim> &center, const double radius)
-    : center(center), radius(radius)
+  template <int dim>
+  CircularIndicatorFunction<dim>::CircularIndicatorFunction(
+    const Point<dim> &center,
+    const double      radius)
+    : center(center)
+    , radius(radius)
   {}
 
-  template<int dim>
-  double CircularIndicatorFunction<dim>::value(const Point<dim> &p, [[maybe_unused]] const unsigned int component) const
+  template <int dim>
+  double CircularIndicatorFunction<dim>::value(
+    const Point<dim>                   &p,
+    [[maybe_unused]] const unsigned int component) const
   {
-    if((center-p).norm() <= radius)
+    if ((center - p).norm() <= radius)
       return 1;
     else
       return 0;
@@ -491,7 +499,8 @@ namespace Step93
 
                 const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
-                const CircularIndicatorFunction<dim> heat_plate_0(heat_center_0, 0.2),
+                const CircularIndicatorFunction<dim> heat_plate_0(heat_center_0,
+                                                                  0.2),
                   heat_plate_1(heat_center_1, 0.2),
                   heat_plate_2(heat_center_2, 0.2),
                   heat_plate_3(heat_center_3, 0.2);
@@ -593,11 +602,11 @@ namespace Step93
       hot_plate_2(toy_dof_handler.n_dofs()),
       hot_plate_3(toy_dof_handler.n_dofs());
 
-    const TargetFunction<dim> target_function;
-    const CircularIndicatorFunction<dim>      heat_plate_0(heat_center_0, 0.2);
-    const CircularIndicatorFunction<dim>      heat_plate_1(heat_center_1, 0.2);
-    const CircularIndicatorFunction<dim>      heat_plate_2(heat_center_2, 0.2);
-    const CircularIndicatorFunction<dim>      heat_plate_3(heat_center_3, 0.2);
+    const TargetFunction<dim>            target_function;
+    const CircularIndicatorFunction<dim> heat_plate_0(heat_center_0, 0.2);
+    const CircularIndicatorFunction<dim> heat_plate_1(heat_center_1, 0.2);
+    const CircularIndicatorFunction<dim> heat_plate_2(heat_center_2, 0.2);
+    const CircularIndicatorFunction<dim> heat_plate_3(heat_center_3, 0.2);
 
     VectorTools::interpolate(toy_dof_handler, target_function, target);
     VectorTools::interpolate(toy_dof_handler, heat_plate_0, hot_plate_0);

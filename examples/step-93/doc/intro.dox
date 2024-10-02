@@ -44,7 +44,7 @@ To make this more compact, we phrase it as a Lagrangian
   L = ||u - \overline{u}||^2 - (\lambda, -\Delta u - f),
 @f}
 
-where $\lambda$ is a Lagrangian multiplier and $(\cdot, \cdot)$ denotes a scalar 
+where $\lambda$ is a Lagrangian multiplier and $(\cdot, \cdot)$ denotes a scalar
 product. We do this because finding a minimizer of $L$
 is equivalent to solving the original optimization problem, and we can find a minimizer
 of $L$ by finding roots of its derivatives. At this point, we have a choice: we can either
@@ -55,8 +55,8 @@ will use the second approach here. The discretized Lagrangian is
 
 @f{align*}{
   L_n =& ||U - \overline{U}||^2 - (\Lambda, -\Delta U - F)\\
-   =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j 
-   - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right] 
+   =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
+   - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right]
    - \sum_{i=0}^n\sum_{j=0}^n\left[\Lambda^iU^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
    + \sum_{i=0}^n \left[\Lambda^i\int_{\Omega}\varphi_i f\right].
 @f}
@@ -70,8 +70,8 @@ Further, suppose we can write the right hand side function $f$ as
 where each $f_k$ is something simple (in this example, a $\chi$ function). Then the Lagrangian becomes
 
 @f{align*}{
-  L_n =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j 
-   - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right] 
+  L_n =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
+   - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right]
    - \sum_{i=0}^n\sum_{j=0}^n\left[\Lambda^jU^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
    + \sum_{j=0}^n\sum_{k=0}^m \left[\Lambda^iC^k\int_{\Omega}\varphi_i f_k\right].
 @f}
@@ -89,12 +89,18 @@ To find a minimum, we take a partial derivative with respect to each $U^i$,
 
 As with many other minimization problems, we can observe that for a minimum to occur,
 these derivatives must all be 0. This gives us $n + n + m$ linear equations to solve
-for the coefficient vectors $U$, $\Lambda$, and $C$.
+for the coefficient vectors $U$, $\Lambda$, and $C$:
+
+@f{align*}{
+  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
+   - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] = 0\\
+  \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
+  + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k = 0\\
+  \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k = 0.
+@f}
 
 
-TODO: Sam, please complete. State in words what the model is, then
-state in equations, and derive the optimality conditions we want to
-solve. Then delete this comment.
+TODO: Make sure this makes sense with next section, Sam: write derivatives equal to 0.
 
 
 @sect3{What is the problem?}
@@ -240,7 +246,7 @@ the system matrix, and outputting results.
 When we construct the sparsity pattern, deal.ii implicitly assumes that
 only dofs that share a cell could have a non-zero entry in the matrix.
 Consequently, when working with non-local dofs, the sparsity pattern that
-DoFTools::make_sparsity_pattern creates will omit entries that in fact
+DoFTools::make_sparsity_pattern() creates will omit entries that in fact
 we want to fill. To fix this, after creating the sparsity pattern we
 need to loop over all cells in the mesh and check whether the dofs on
 that cell overlap with regions where each $f_i$ is nonzero. If they do,
