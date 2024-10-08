@@ -15,8 +15,8 @@ But there are also situations where we have unknowns in the equations
 we consider that are *not* functions but are *scalars* instead. The
 example we will consider here to illustrate this kind of situation is
 an optimization problem: Let's assume we have a body to which we have
-attached four heaters. How should we set the power levels $f_1,\ldots,
-f_4$ of these four heaters so that the temperature $u(\mathbf x)$ of
+attached four heaters. How should we set the power levels $C_1,\ldots,
+C_4$ of these four heaters so that the temperature $u(\mathbf x)$ of
 the body is as close as possible to a desired state? The issue here is
 that we have one unknown that is a function (namely, the temperature
 $u(\mathbf x)$) for which we can apply the usual finite element
@@ -30,11 +30,18 @@ result of a discretization process.
 
 Before going into how we solve this issue, let us first state the concrete set of equations.
 
-We want to find a solution $u$ to the heat equation $-\Delta u = f$ which is as close as
+We want to find a solution $u$ to the heat equation
+
+@f{align*}{
+  -\Delta u =& f \text{ in }\Omega\\
+  u =&0 \text{ on } \partial\Omega,
+@f}
+
+which is as close as
 possible to a desired solution $\overline{u}$. We can formulate this as an optimization problem
 
 @f{align*}{
-  \min\lim_{u} &||u-\overline{u}||^2\\
+  \min_{u} &||u-\overline{u}||^2\\
   \text{s.t.} & -\Delta u = f.
 @f}
 
@@ -44,7 +51,7 @@ To make this more compact, we phrase it as a Lagrangian
   L = ||u - \overline{u}||^2 - (\lambda, -\Delta u - f),
 @f}
 
-where $\lambda$ is a Lagrangian multiplier and $(\cdot, \cdot)$ denotes a scalar
+where $\lambda$ is a Lagrange multiplier and $(\cdot, \cdot)$ denotes an $L^2$ scalar
 product. We do this because finding a minimizer of $L$
 is equivalent to solving the original optimization problem, and we can find a minimizer
 of $L$ by finding roots of its derivatives. At this point, we have a choice: we can either
@@ -61,13 +68,13 @@ will use the second approach here. The discretized Lagrangian is
    + \sum_{i=0}^n \left[\Lambda^i\int_{\Omega}\varphi_i f\right].
 @f}
 
-Further, suppose we can write the right hand side function $f$ as
+Note the application of integration by parts above, which makes use of the Dirichelt boundary conditions to eliminate the boundary integral. Further, suppose we can write the right hand side function $f$ as
 
 @f{align*}{
   f = \sum_{k=0}^m C^k f_k,
 @f}
 
-where each $f_k$ is something simple (in this example, a $\chi$ function). Then the Lagrangian becomes
+where each $f_k$ is something simple (in this example, each $f_k$ is a $\chi$ function and $m=4$). Then the Lagrangian becomes
 
 @f{align*}{
   L_n =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
@@ -76,8 +83,10 @@ where each $f_k$ is something simple (in this example, a $\chi$ function). Then 
    + \sum_{j=0}^n\sum_{k=0}^m \left[\Lambda^iC^k\int_{\Omega}\varphi_i f_k\right].
 @f}
 
+Note: at this point, we can clearly see where the nonlocal degrees of freedom are coming from. The term $\int_\Omega \varphi_i f_k$ is an integral which cannot a priori be confined to a single cell or small collection of cells, but rather must be evaluated on all cells that lie in the domain of $f$.
+
 To find a minimum, we take a partial derivative with respect to each $U^i$,
- $\Lambda^j$, and $C^k$. The derivative have the following form:
+ $\Lambda^j$, and $C^k$. The derivatives have the following form:
 
 @f{align*}{
   \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
@@ -91,19 +100,26 @@ As with many other minimization problems, we can observe that for a minimum to o
 these derivatives must all be 0. This gives us $n + n + m$ linear equations to solve
 for the coefficient vectors $U$, $\Lambda$, and $C$:
 
+TODO: Am I counting the DoFs correctly? I think $N_U$ and $N_\Lambda$ can be different
+if they're using different FE_Q degrees, but I'm not sure where that shows up.
+
 @f{align*}{
-  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
-   - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] = 0\\
-  \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
-  + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k = 0\\
-  \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k = 0.
+  \frac{\partial L}{\partial U^i} = \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
+   - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] =& 0\\
+  \frac{\partial L}{\partial \Lambda^j} = -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
+  + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k =& 0\\
+  \frac{\partial L}{\partial C^k} = \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k =& 0.
 @f}
 
+Intuitively, what we would like to do is construct an $n\times n\times m$ matrix to solve this
+linear system. However, this turns out to cause more problems than it solves, as we discuss
+below.
 
-TODO: Make sure this makes sense with next section, Sam: write derivatives equal to 0.
+
+TODO: Wolfgang, I feel like this does not transition well to the next section. Do you have thoughts?
 
 
-@sect3{What is the problem?}
+<h3>What is the problem?</h3>
 
 The straightforward way to deal with the equations above is to define
 an FESystem object with two components, one for the temperature
@@ -171,7 +187,7 @@ reasons.
 
 
 
-@sect3{How do we address this?}
+<h3>How do we address this?</h3>
 
 So, then, how are we going to address this? At its core, what needs to
 happen is that the DoFHandler knows about the additional degrees of
@@ -236,8 +252,7 @@ we will have to do some extra work when building sparsity patterns
 system matrix/right hand side.
 
 
-
-@sect4{What concrete steps do we need to take?}
+<h3>What concrete steps do we need to take?</h3>
 
 There are three places in the standard finite element code where we will
 need to take special care: constructing the sparsity pattern, constructing
@@ -250,14 +265,26 @@ DoFTools::make_sparsity_pattern() creates will omit entries that in fact
 we want to fill. To fix this, after creating the sparsity pattern we
 need to loop over all cells in the mesh and check whether the dofs on
 that cell overlap with regions where each $f_i$ is nonzero. If they do,
-then we neeed to add an entry to the sparsity pattern at location
+then we need to add an entry to the sparsity pattern at location
 (dof_index, nonlocal_dof_index) and (nonlocal_dof_index, dof_index).
 Note that we need to add two entries because it doesn't matter whether
 the nonlocal dof is the row or column index, the entry could be
 nonzero. In this example, we further refine this by only adding entries
 where the $\Lambda$ component of the FESystem is nonzero, because we only
 deal with the nonlocal functions in the equations stemming from the
-$\Lambda^j$ and $C^k$ derivatives.
+$\Lambda^j$ and $C^k$ derivatives. This leads to a block matrix structure
+that looks like:
+
+@f{align*}{
+  \left(\begin{tabular}{c|c|c}
+    \Large $M$ & \Large $N^t$ & \Large 0 \\
+    \hline\\
+    \Large $N$ & \Large 0 & \Large $F^t$\\
+    \hline\\
+    \Large 0 & \Large $F$ & \Large 0\\
+    \end{tabular}
+  \right).
+}
 
 We take a similar approach when constructing the system matrix. We do
 the standard loop over cells, quadrature points, and dof indices, but
