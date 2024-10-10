@@ -415,6 +415,7 @@ namespace Step93
       {
         nonlocal_dofs.push_back(non_local_index);
       }
+    std::cout << "Number of nonlocal dofs: " << nonlocal_dofs.size() << std::endl;
 
 
     std::vector<types::global_dof_index> local_dof_indices;
@@ -487,8 +488,16 @@ namespace Step93
                                      update_quadrature_points |
                                      update_JxW_values);
 
+    //This is a vector that stores the coefficients of u-bar in
+    //the finite element basis. We use this to construct the rhs
+    //component associated to the u derivatives of the Lagrangian.
+    //Notice that we instantiate the vector and interpolate the
+    //target function here, but this is NOT what goes in the RHS
+    //vector. We first have to multiply this vector by the mass
+    //matrix, which we do in the same loop that constructs the
+    //system matrix. Note also that the mass matrix is a block
+    //component of the system matrix.
     Vector<double> rhs_coefficients(dof_handler.n_dofs());
-
     VectorTools::interpolate(dof_handler, target_function, rhs_coefficients);
 
     FullMatrix<double> cell_matrix;

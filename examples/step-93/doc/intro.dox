@@ -105,15 +105,43 @@ if they're using different FE_Q degrees, but I'm not sure where that shows up.
 
 @f{align*}{
   \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
-   - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] =& 0\\
+   - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] = 0\\
   \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
-  + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k =& 0\\
-  \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k =& 0.
+  + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k = 0\\
+  \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k = 0.\\
 @f}
 
-Intuitively, what we would like to do is construct an $n\times n\times m$ matrix to solve this
-linear system. However, this turns out to cause more problems than it solves, as we discuss
-below.
+The sumations are suggestive of matrix-vector multiplication, and in fact we can write the equations
+in such a form. Take $(\mathcal{M}_{i, j}) = \int_\Omega\varphi_i\varphi_j$, $(\mathcal{N}_{i, j})
+ = \int_\Omega \nabla\varphi_i\cdot\nabla\varphi_j$, and $(\mathcal{F}_{j, k}) = \int_\Omega\varphi_j
+ f_k$, and note that $\mathcal{F}$ is an $n\times m$ matrix. Then we get the matrix system
+ 
+ @f{align*}{
+  2\mathcal{M}U - 2\mathcal{M}\overline{U} - \mathcal{N}^T\Lambda  =& 0\\
+  -\mathcal{N}U + \mathcal{F}^TC =& 0\\
+  \mathcal{F}\Lambda =& 0.
+ @f}
+
+Moving known quantities to the right-hand-side and combinging the matrix equations gives us an
+idealized system to solve:
+
+@f{align*}{
+  \left(\begin{array}{c c c}
+  2\mathcal{M} & -\mathcal{N}^T & 0\\
+  -\mathcal{N} & 0 & \mathcal{F}^T\\
+  0 & \mathcal{F} & 0
+  \end{array}\right)
+  \left(\begin{array}{c}
+  U\\\Lambda\\ C
+  \end{array}\right) = 
+  \left(\begin{array}{c}
+  2\mathcal{M}\overline{U}\\0\\0
+  \end{array}\right).
+@f}
+
+Unfotunately, this type of block matrix, where some of the blocks have different dimensions
+than others, does not work well with deal.ii's internal structure. So, we will need to
+modify how this problem is constructed to work well with deal.ii, which is discussed below.
 
 
 TODO: Wolfgang, I feel like this does not transition well to the next section. Do you have thoughts?
@@ -256,7 +284,17 @@ system matrix/right hand side.
 
 There are three places in the standard finite element code where we will
 need to take special care: constructing the sparsity pattern, constructing
-the system matrix, and outputting results.
+the system matrix and system rhs, and outputting results. Before all of,
+though, we need to determine which of the FE_Nothing elements becomes
+FE_DGQ elements. We do this in setup_system(), before dofs are distributed.
+Since we are using FE_DGQ elements, we don't need to worry about boundary
+conditions affecting the nonlocal dofs, so we simply enumerate the cells
+until we have collected enough dofs (in this program that depends on the
+dimension of the problem). Each time we encounter a new cell, we
+change the hp finite element from an FE_System with a 3rd FE_Nothing
+component to an FE_System with a third FE_DGQ component. Calling
+distribute_dofs() after this is all we need to do to have the system set
+up correctly. Next, we need to 
 
 When we construct the sparsity pattern, deal.ii implicitly assumes that
 only dofs that share a cell could have a non-zero entry in the matrix.
@@ -275,20 +313,20 @@ deal with the nonlocal functions in the equations stemming from the
 $\Lambda^j$ and $C^k$ derivatives.
 
 We take a similar approach when constructing the system matrix. We do
-the standard loop over cells, quadrature points, and dof indices, but
+the standard loop over cells, quadrature points, and dof indices. Normally,
+we would simply integrate the finite elements on the cell and add these 
+values to a local matrix. However, because we are dealing with nonlocal dofs
+this approach won't work. Instead, we use the standard approach for
+constructing the $\mathcal{M}$ and $\mathcal{N}$ portions of the block system
+matrix, but for the $\mathcal{F}$ portions we need to numerically integrate
+each finite element against the nonlocal $f_k$ functions, and enter the
+resulting value in the correct location in the system matrix. To do the integration,
+we simply instantiate a Point object for the quadrature point and pass this
+to the $f_k$ functions, keeping all other aspects of integration the same.
+
+, but
 then we check if each quadrature point is in the domain of each $f_k$
 function, and if it is we 
-
-This leads to a block matrix structure that looks like:
-
-@f{align*}{
-  \left(\begin{array}{ccc}
-  M & N^T & 0\\
-  N & 0 & F^T\\
-  0 & F & 0
-  \end{array}    
-  \right)
-@f}
 
 
 
