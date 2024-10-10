@@ -104,11 +104,11 @@ TODO: Am I counting the DoFs correctly? I think $N_U$ and $N_\Lambda$ can be dif
 if they're using different FE_Q degrees, but I'm not sure where that shows up.
 
 @f{align*}{
-  \frac{\partial L}{\partial U^i} = \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
+  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
    - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] =& 0\\
-  \frac{\partial L}{\partial \Lambda^j} = -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
+  \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
   + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k =& 0\\
-  \frac{\partial L}{\partial C^k} = \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k =& 0.
+  \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k =& 0.
 @f}
 
 Intuitively, what we would like to do is construct an $n\times n\times m$ matrix to solve this
@@ -272,22 +272,23 @@ the nonlocal dof is the row or column index, the entry could be
 nonzero. In this example, we further refine this by only adding entries
 where the $\Lambda$ component of the FESystem is nonzero, because we only
 deal with the nonlocal functions in the equations stemming from the
-$\Lambda^j$ and $C^k$ derivatives. This leads to a block matrix structure
-that looks like:
-
-@f{align*}{
-  \left(\begin{tabular}{c|c|c}
-    \Large $M$ & \Large $N^t$ & \Large 0 \\
-    \hline\\
-    \Large $N$ & \Large 0 & \Large $F^t$\\
-    \hline\\
-    \Large 0 & \Large $F$ & \Large 0\\
-    \end{tabular}
-  \right).
-}
+$\Lambda^j$ and $C^k$ derivatives.
 
 We take a similar approach when constructing the system matrix. We do
 the standard loop over cells, quadrature points, and dof indices, but
+then we check if each quadrature point is in the domain of each $f_k$
+function, and if it is we 
+
+This leads to a block matrix structure that looks like:
+
+@f{align*}{
+  \left(\begin{array}{ccc}
+  M & N^T & 0\\
+  N & 0 & F^T\\
+  0 & F & 0
+  \end{array}    
+  \right)
+@f}
 
 
 
