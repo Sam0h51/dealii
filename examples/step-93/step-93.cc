@@ -62,51 +62,62 @@ namespace Step93
 {
   using namespace dealii;
 
-  //This is a function class for u-bar; it represents the heat profile we want to match.
-  //There is code available for either a circular step function or a Gaussian.
+  // This is a function class for u-bar; it represents the heat profile we want
+  // to match. There is code available for either a circular step function or a
+  // Gaussian.
   //
-  //This class has two member variables:
-  //  center: a Point object representing the center of the function
-  //  radius: a double representing the radius of the circular step, or the standard deviation of
-  //          the Gaussian
+  // This class has two member variables:
+  //   center: a Point object representing the center of the function
+  //   radius: a double representing the radius of the circular step, or the
+  //   standard deviation of
+  //           the Gaussian
   template <int dim>
   class TargetFunction : public Function<dim>
   {
   public:
-    //Default constructor
+    // Default constructor
     TargetFunction(const unsigned int n_components = 1)
-      : Function<dim>(n_components), center(Point<dim> (0)), radius(0.1){};
-    //Overloaded contructor
+      : Function<dim>(n_components)
+      , center(Point<dim>(0))
+      , radius(0.1){};
+    // Overloaded contructor
     //
-    //Parameters:
-    //  center: a constant Point pointer used to set the member variable center
-    //  radius: a constant double used to set the member variable radius
-    TargetFunction(const unsigned int n_components, const Point<dim> &center, const double radius = .1)
-      : Function<dim>(n_components), center(center), radius(radius){};
+    // Parameters:
+    //   center: a constant Point pointer used to set the member variable center
+    //   radius: a constant double used to set the member variable radius
+    TargetFunction(const unsigned int n_components,
+                   const Point<dim>  &center,
+                   const double       radius = .1)
+      : Function<dim>(n_components)
+      , center(center)
+      , radius(radius){};
 
-    //The value of the function at point p
+    // The value of the function at point p
     virtual double value(const Point<dim>  &p,
                          const unsigned int component = 0) const override;
+
   private:
-    //See above
+    // See above
     const Point<dim> center;
-    const double radius;
+    const double     radius;
   };
 
-  //Returns the value of the function at point p for and component index 'component'.
-  //In this case, if the component corresponds to the solution u, then the function
-  //returns a value based on either a step function or a Gaussian. If the component
-  //corresponds to l or c, the function always returns 0.
+  // Returns the value of the function at point p for and component index
+  // 'component'. In this case, if the component corresponds to the solution u,
+  // then the function returns a value based on either a step function or a
+  // Gaussian. If the component corresponds to l or c, the function always
+  // returns 0.
   template <int dim>
-  double TargetFunction<dim>::value(const Point<dim>    &p,
-                                   const unsigned int component) const
+  double TargetFunction<dim>::value(const Point<dim>  &p,
+                                    const unsigned int component) const
   {
     if (component == 0)
       {
-        //This code is for a Gaussian target function
-        //return std::exp(-((p-center).norm()*(p-center).norm())/(radius*radius));
+        // This code is for a Gaussian target function
+        // return
+        // std::exp(-((p-center).norm()*(p-center).norm())/(radius*radius));
 
-        //This code is for a step target function
+        // This code is for a step target function
         if ((p - center).norm() <= 0.1)
           return 12;
         else
@@ -116,60 +127,77 @@ namespace Step93
       return 0;
   }
 
-  //This is a circular indicator function. Unlike the target function, this
-  //does not need a component argument because we have to manually address
-  //where it gets used in the code. Objects of this function type correspond
-  //to the nonlocal dofs.
+  // This is a circular indicator function. Unlike the target function, this
+  // does not need a component argument because we have to manually address
+  // where it gets used in the code. Objects of this function type correspond
+  // to the nonlocal dofs.
   //
-  // Parameters:
-  //  center: a constant Point object giving the center of the indicator region
-  //  radius: the radius of the region
-  template<int dim>
+  //  Parameters:
+  //   center: a constant Point object giving the center of the indicator region
+  //   radius: the radius of the region
+  template <int dim>
   class CircularIndicatorFunction : public Function<dim>
   {
-    public:
-      CircularIndicatorFunction() {}
-      
-      //Overloaded constructor that allows the center and radius to be set at initialization
-      CircularIndicatorFunction(const Point<dim> &center, const double radius);
+  public:
+    CircularIndicatorFunction()
+    {}
 
-      virtual double value(const Point<dim> &p, [[maybe_unused]] const unsigned int component = 0) const override;
-    
-    private:
-      const Point<dim> center;
-      const double     radius;
+    // Overloaded constructor that allows the center and radius to be set at
+    // initialization
+    CircularIndicatorFunction(const Point<dim> &center, const double radius);
+
+    virtual double
+    value(const Point<dim>                   &p,
+          [[maybe_unused]] const unsigned int component = 0) const override;
+
+  private:
+    const Point<dim> center;
+    const double     radius;
   };
 
-  template<int dim>
-  CircularIndicatorFunction<dim>::CircularIndicatorFunction(const Point<dim> &center, const double radius)
-    : center(center), radius(radius)
+  template <int dim>
+  CircularIndicatorFunction<dim>::CircularIndicatorFunction(
+    const Point<dim> &center,
+    const double      radius)
+    : center(center)
+    , radius(radius)
   {}
 
-  template<int dim>
-  double CircularIndicatorFunction<dim>::value(const Point<dim> &p, [[maybe_unused]] const unsigned int component) const
+  template <int dim>
+  double CircularIndicatorFunction<dim>::value(
+    const Point<dim>                   &p,
+    [[maybe_unused]] const unsigned int component) const
   {
-    if((center-p).norm() <= radius)
+    if ((center - p).norm() <= radius)
       return 1;
     else
       return 0;
   }
 
-  //The main class is very similar to in step-4. However, there are four new member variables:
-  //  nonlocal_dofs:    this is a std::vector of dof indices that stores the dof index for the
-  //                    nonlocal dofs.
-  //  heat_centers:     this is a std::vector of Point objects, used to set the center of the
-  //                    CircularIndicatorFunction objects used as heat sources in this program.
-  //  heat_functions:   a std::vector of CircularIndicatorFunction objects; these are the heat
-  //                    sources.
-  //  target_function:  this is the function we want to match. We store it as a class variable
-  //                    because it is used both in assemble_system() and output_results().
+  // The main class is very similar to in step-4. However, there are four new
+  // member variables:
+  //   nonlocal_dofs:    this is a std::vector of dof indices that stores the
+  //   dof index for the
+  //                     nonlocal dofs.
+  //   heat_centers:     this is a std::vector of Point objects, used to set the
+  //   center of the
+  //                     CircularIndicatorFunction objects used as heat sources
+  //                     in this program.
+  //   heat_functions:   a std::vector of CircularIndicatorFunction objects;
+  //   these are the heat
+  //                     sources.
+  //   target_function:  this is the function we want to match. We store it as a
+  //   class variable
+  //                     because it is used both in assemble_system() and
+  //                     output_results().
   template <int dim>
   class Step93
   {
   public:
     Step93();
 
-    //An overloaded constructor that allows us to set the center of the target function at instantiation
+    // An overloaded constructor that allows us to set the center of the target
+    // function at instantiation
     Step93(const Point<dim> &target_center);
     ~Step93();
 
@@ -186,9 +214,9 @@ namespace Step93
     Triangulation<dim> triangulation;
     DoFHandler<dim>    dof_handler;
 
-    hp::FECollection<dim>    fe_collection;
-    hp::QCollection<dim>     quadrature_collection;
-    //TODO: Do I use this anywhere? If not, delete it.
+    hp::FECollection<dim> fe_collection;
+    hp::QCollection<dim>  quadrature_collection;
+    // TODO: Do I use this anywhere? If not, delete it.
     hp::QCollection<dim - 1> face_quadrature_collection;
 
     AffineConstraints<double> constraints;
@@ -208,134 +236,140 @@ namespace Step93
     // have non-local dofs to capture this behavior.
     std::vector<Point<dim>> heat_centers;
 
-    //Stores a vector of indicator functions, which are used for assembling
-    //the system and again when outputting the results.
+    // Stores a vector of indicator functions, which are used for assembling
+    // the system and again when outputting the results.
     std::vector<CircularIndicatorFunction<dim>> heat_functions;
 
-    //Stores the TargetFunction object used to construct the system rhs in
-    //assemble_system(), and for output in output_results().
+    // Stores the TargetFunction object used to construct the system rhs in
+    // assemble_system(), and for output in output_results().
     const TargetFunction<dim> target_function;
   };
 
-  //This constructor has several functions: it initializes dof_handler and target_function,
-  //it constructs the hp finite element collection, it generates a vector of center points
-  //for the heat functions, and it generates a vector of CircularIndicatorFunctions objects
-  //which are the heat functions.
+  // This constructor has several functions: it initializes dof_handler and
+  // target_function, it constructs the hp finite element collection, it
+  // generates a vector of center points for the heat functions, and it
+  // generates a vector of CircularIndicatorFunctions objects which are the heat
+  // functions.
   template <int dim>
   Step93<dim>::Step93()
-    : dof_handler(triangulation),
-      target_function(3, Point<dim>())
+    : dof_handler(triangulation)
+    , target_function(3, Point<dim>())
   {
-    //Here, we generate the finite element collection, which is basically a list of all the
-    //possible finite elements we could use on each cell. This collection has two elements:
-    //one FE_System that has two degree 2 FE_Q elements and one FE_Nothing element, and
-    //one FE_System that has two degree 2 FE_Q elements and one degree 0 FE_DGQ element.
+    // Here, we generate the finite element collection, which is basically a
+    // list of all the possible finite elements we could use on each cell. This
+    // collection has two elements: one FE_System that has two degree 2 FE_Q
+    // elements and one FE_Nothing element, and one FE_System that has two
+    // degree 2 FE_Q elements and one degree 0 FE_DGQ element.
     fe_collection.push_back(
       FESystem<dim>(FE_Q<dim>(2), 2, FE_Nothing<dim>(), 1));
     fe_collection.push_back(FESystem<dim>(FE_Q<dim>(2), 2, FE_DGQ<dim>(0), 1));
 
-    //The quadrature collection is just on degree 3 QGauss element, and the face collection
-    //is the same but one dimension lower.
+    // The quadrature collection is just on degree 3 QGauss element, and the
+    // face collection is the same but one dimension lower.
     quadrature_collection.push_back(QGauss<dim>(3));
     face_quadrature_collection.push_back(QGauss<dim - 1>(3));
 
-    //Here, we create the vector of center points by enumerating the
-    //vertices of a lattice, in this case the corners of a hypercube
-    //centered at 0, with side length 1.
-    double coordinate_points[2] = {.5, -.5};
+    // Here, we create the vector of center points by enumerating the
+    // vertices of a lattice, in this case the corners of a hypercube
+    // centered at 0, with side length 1.
+    double                           coordinate_points[2] = {.5, -.5};
     std::vector<std::vector<double>> center_points;
 
-    for(int i = 0; i < std::pow(2, dim); ++i)
-    {
-      //Initialize a 1 x dim tensor to store the coordinates of the point
-      Tensor<1, dim, double> temp_point;
-      for(int j=0; j<dim; ++j)
+    for (int i = 0; i < std::pow(2, dim); ++i)
       {
-        u_int8_t binary_index = i;
+        // Initialize a 1 x dim tensor to store the coordinates of the point
+        Tensor<1, dim, double> temp_point;
+        for (int j = 0; j < dim; ++j)
+          {
+            u_int8_t binary_index = i;
 
-        //Shift right by 7-j places
-        binary_index = binary_index << (7-j);
-        //Shift left by 7 places
-        binary_index = binary_index >> 7;
+            // Shift right by 7-j places
+            binary_index = binary_index << (7 - j);
+            // Shift left by 7 places
+            binary_index = binary_index >> 7;
 
-        //Now the jth binary digit is in the 0th position, so binary_index
-        //is either 0 or 1 depending on this digit. This determines if the
-        //jth entry of temporary_point is 0.5 or -0.5
-        temp_point[j] = coordinate_points[binary_index];
+            // Now the jth binary digit is in the 0th position, so binary_index
+            // is either 0 or 1 depending on this digit. This determines if the
+            // jth entry of temporary_point is 0.5 or -0.5
+            temp_point[j] = coordinate_points[binary_index];
+          }
+        // Here, we use the Tensor point to initialize a Point object with the
+        // same coordinates...
+        const Point<dim> setting_point(temp_point);
+        //...we add the point to the vector of center points...
+        heat_centers.emplace_back(setting_point);
+        //...and finally we create a CircularIndicatorFunction object with the
+        // generated center, and add this to the vector of indicator functions.
+        heat_functions.emplace_back(
+          CircularIndicatorFunction<dim>(setting_point, 0.2));
       }
-      //Here, we use the Tensor point to initialize a Point object with the
-      //same coordinates...
-      const Point<dim> setting_point(temp_point);
-      //...we add the point to the vector of center points...
-      heat_centers.emplace_back(setting_point);
-      //...and finally we create a CircularIndicatorFunction object with the
-      //generated center, and add this to the vector of indicator functions.
-      heat_functions.emplace_back(CircularIndicatorFunction<dim>(setting_point, 0.2));
-    }
   }
 
-  //This is the same as above, but with a parameter for the center of the target function.
+  // This is the same as above, but with a parameter for the center of the
+  // target function.
   template <int dim>
   Step93<dim>::Step93(const Point<dim> &target_center)
-    : dof_handler(triangulation),
-      target_function(3, target_center)
+    : dof_handler(triangulation)
+    , target_function(3, target_center)
   {
-    //Here, we generate the finite element collection, which is basically a list of all the
-    //possible finite elements we could use on each cell. This collection has two elements:
-    //one FE_System that has two degree 2 FE_Q elements and one FE_Nothing element, and
-    //one FE_System that has two degree 2 FE_Q elements and one degree 0 FE_DGQ element.
+    // Here, we generate the finite element collection, which is basically a
+    // list of all the possible finite elements we could use on each cell. This
+    // collection has two elements: one FE_System that has two degree 2 FE_Q
+    // elements and one FE_Nothing element, and one FE_System that has two
+    // degree 2 FE_Q elements and one degree 0 FE_DGQ element.
     fe_collection.push_back(
       FESystem<dim>(FE_Q<dim>(2), 2, FE_Nothing<dim>(), 1));
     fe_collection.push_back(FESystem<dim>(FE_Q<dim>(2), 2, FE_DGQ<dim>(0), 1));
 
-    //The quadrature collection is just on degree 3 QGauss element, and the face collection
-    //is the same but one dimension lower.
+    // The quadrature collection is just on degree 3 QGauss element, and the
+    // face collection is the same but one dimension lower.
     quadrature_collection.push_back(QGauss<dim>(3));
     face_quadrature_collection.push_back(QGauss<dim - 1>(3));
 
-    //Here, we create the vector of center points by enumerating the
-    //vertices of a lattice, in this case the corners of a hypercube
-    //centered at 0, with side length 1.
-    double coordinate_points[2] = {.5, -.5};
+    // Here, we create the vector of center points by enumerating the
+    // vertices of a lattice, in this case the corners of a hypercube
+    // centered at 0, with side length 1.
+    double                           coordinate_points[2] = {.5, -.5};
     std::vector<std::vector<double>> center_points;
 
-    for(int i = 0; i < std::pow(2, dim); ++i)
-    {
-      //Initialize a 1 x dim tensor to store the coordinates of the point
-      Tensor<1, dim, double> temp_point;
-      for(int j=0; j<dim; ++j)
+    for (int i = 0; i < std::pow(2, dim); ++i)
       {
-        u_int8_t binary_index = i;
+        // Initialize a 1 x dim tensor to store the coordinates of the point
+        Tensor<1, dim, double> temp_point;
+        for (int j = 0; j < dim; ++j)
+          {
+            u_int8_t binary_index = i;
 
-        //Shift right by 7-j places
-        binary_index = binary_index << (7-j);
-        //Shift left by 7 places
-        binary_index = binary_index >> 7;
+            // Shift right by 7-j places
+            binary_index = binary_index << (7 - j);
+            // Shift left by 7 places
+            binary_index = binary_index >> 7;
 
-        //Now the jth binary digit is in the 0th position, so binary_index
-        //is either 0 or 1 depending on this digit. This determines if the
-        //jth entry of temporary_point is 0.5 or -0.5
-        temp_point[j] = coordinate_points[binary_index];
+            // Now the jth binary digit is in the 0th position, so binary_index
+            // is either 0 or 1 depending on this digit. This determines if the
+            // jth entry of temporary_point is 0.5 or -0.5
+            temp_point[j] = coordinate_points[binary_index];
+          }
+        // Here, we use the Tensor point to initialize a Point object with the
+        // same coordinates...
+        const Point<dim> setting_point(temp_point);
+        //...we add the point to the vector of center points...
+        heat_centers.emplace_back(setting_point);
+        //...and finally we create a CircularIndicatorFunction object with the
+        // generated center, and add this to the vector of indicator functions.
+        heat_functions.emplace_back(
+          CircularIndicatorFunction<dim>(setting_point, 0.2));
       }
-      //Here, we use the Tensor point to initialize a Point object with the
-      //same coordinates...
-      const Point<dim> setting_point(temp_point);
-      //...we add the point to the vector of center points...
-      heat_centers.emplace_back(setting_point);
-      //...and finally we create a CircularIndicatorFunction object with the
-      //generated center, and add this to the vector of indicator functions.
-      heat_functions.emplace_back(CircularIndicatorFunction<dim>(setting_point, 0.2));
-    }
   }
 
-  //Standard destructor
+  // Standard destructor
   template <int dim>
   Step93<dim>::~Step93()
   {
     dof_handler.clear();
   }
 
-  //Makes a hypercube grid, see step-4
+  // Makes a hypercube grid, see step-4
   template <int dim>
   void Step93<dim>::make_grid()
   {
@@ -346,8 +380,8 @@ namespace Step93
               << std::endl;
   }
 
-  //setup_system() is similar to step-4, except we have to add a few steps
-  //to prepare for the nonlocal dofs
+  // setup_system() is similar to step-4, except we have to add a few steps
+  // to prepare for the nonlocal dofs
   template <int dim>
   void Step93<dim>::setup_system()
   {
@@ -355,8 +389,8 @@ namespace Step93
     unsigned int number_of_c_active_cells = 0;
 
     // Here, we loop over the cells and set the FE_System index
-    // to 1, which corresponds to the system with 2 FE_Q elements and one FE_DGQ element.
-    // We do this until we have enough dofs for each heat function.
+    // to 1, which corresponds to the system with 2 FE_Q elements and one FE_DGQ
+    // element. We do this until we have enough dofs for each heat function.
     // Then, we call distribute_dofs.
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
@@ -367,7 +401,7 @@ namespace Step93
       }
     dof_handler.distribute_dofs(fe_collection);
 
-    //Counts the number of dofs in the system
+    // Counts the number of dofs in the system
     const std::vector<types::global_dof_index> dofs_per_component =
       DoFTools::count_dofs_per_fe_component(dof_handler);
     const unsigned int dofs_per_u = dofs_per_component[0],
@@ -377,8 +411,8 @@ namespace Step93
               << dofs_per_l << "+" << dofs_per_l << " = "
               << dofs_per_u + dofs_per_l + dofs_per_c << std::endl;
 
-    //Make the hanging node constraints
-    //TODO: Do I have these?
+    // Make the hanging node constraints
+    // TODO: Do I have these?
     constraints.clear();
     DoFTools::make_hanging_node_constraints(dof_handler, constraints);
     VectorTools::interpolate_boundary_values(dof_handler,
@@ -387,7 +421,7 @@ namespace Step93
                                              constraints);
     constraints.close();
 
-    //Make the base sparsity pattern before we add entries
+    // Make the base sparsity pattern before we add entries
     DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
     DoFTools::make_sparsity_pattern(dof_handler, dsp, constraints, false);
 
@@ -415,7 +449,8 @@ namespace Step93
       {
         nonlocal_dofs.push_back(non_local_index);
       }
-    std::cout << "Number of nonlocal dofs: " << nonlocal_dofs.size() << std::endl;
+    std::cout << "Number of nonlocal dofs: " << nonlocal_dofs.size()
+              << std::endl;
 
 
     std::vector<types::global_dof_index> local_dof_indices;
@@ -452,20 +487,23 @@ namespace Step93
 
                 const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
-                for(unsigned int j = 0; j < heat_functions.size(); ++j){
-                  // Checks if q_point is within the desired radius of the
-                  // heat_center, and if phi_i_l is not zero at this quadrature
-                  // point. If so, adds requisite entries to the sparsity pattern.
-                  if(heat_functions[j].value(q_point) > 1e-2 && phi_i_l != 0){
-                    dsp.add(local_dof_indices[i], nonlocal_dofs[j]);
-                    dsp.add(nonlocal_dofs[j], local_dof_indices[i]);
+                for (unsigned int j = 0; j < heat_functions.size(); ++j)
+                  {
+                    // Checks if q_point is within the desired radius of the
+                    // heat_center, and if phi_i_l is not zero at this
+                    // quadrature point. If so, adds requisite entries to the
+                    // sparsity pattern.
+                    if (heat_functions[j].value(q_point) > 1e-2 && phi_i_l != 0)
+                      {
+                        dsp.add(local_dof_indices[i], nonlocal_dofs[j]);
+                        dsp.add(nonlocal_dofs[j], local_dof_indices[i]);
+                      }
                   }
-                }
               }
           }
       }
 
-    //Standard setup code, see step-4
+    // Standard setup code, see step-4
     sparsity_pattern.copy_from(dsp);
 
     system_matrix.reinit(sparsity_pattern);
@@ -474,11 +512,11 @@ namespace Step93
     system_rhs.reinit(dof_handler.n_dofs());
   }
 
-  //assemble_system() works very similar to how is does in other
-  //tutorial programs (cf. step-4, step-6, TODO: fe_system tutorial program).
-  //However, there is an additional component to constructing the
-  //system matrix, because we need to handle the nonlocal dofs
-  //manually.
+  // assemble_system() works very similar to how is does in other
+  // tutorial programs (cf. step-4, step-6, TODO: fe_system tutorial program).
+  // However, there is an additional component to constructing the
+  // system matrix, because we need to handle the nonlocal dofs
+  // manually.
   template <int dim>
   void Step93<dim>::assemble_system()
   {
@@ -488,15 +526,15 @@ namespace Step93
                                      update_quadrature_points |
                                      update_JxW_values);
 
-    //This is a vector that stores the coefficients of u-bar in
-    //the finite element basis. We use this to construct the rhs
-    //component associated to the u derivatives of the Lagrangian.
-    //Notice that we instantiate the vector and interpolate the
-    //target function here, but this is NOT what goes in the RHS
-    //vector. We first have to multiply this vector by the mass
-    //matrix, which we do in the same loop that constructs the
-    //system matrix. Note also that the mass matrix is a block
-    //component of the system matrix.
+    // This is a vector that stores the coefficients of u-bar in
+    // the finite element basis. We use this to construct the rhs
+    // component associated to the u derivatives of the Lagrangian.
+    // Notice that we instantiate the vector and interpolate the
+    // target function here, but this is NOT what goes in the RHS
+    // vector. We first have to multiply this vector by the mass
+    // matrix, which we do in the same loop that constructs the
+    // system matrix. Note also that the mass matrix is a block
+    // component of the system matrix.
     Vector<double> rhs_coefficients(dof_handler.n_dofs());
     VectorTools::interpolate(dof_handler, target_function, rhs_coefficients);
 
@@ -509,9 +547,9 @@ namespace Step93
     const FEValuesExtractors::Scalar l(1);
     const FEValuesExtractors::Scalar c(2);
 
-    //Standard loop setup for constructing the system matrix.
-    //Note that we do this manually rather than using an existing
-    //function, because we must handle the nonlocal dofs manually.
+    // Standard loop setup for constructing the system matrix.
+    // Note that we do this manually rather than using an existing
+    // function, because we must handle the nonlocal dofs manually.
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
         const unsigned int dofs_per_cell = cell->get_fe().n_dofs_per_cell();
@@ -563,35 +601,37 @@ namespace Step93
                   }
 
 
-                //Here, we deal with the nonlocal dofs. We start be getting an
-                //actual quadrature point, rather than just an index.
+                // Here, we deal with the nonlocal dofs. We start be getting an
+                // actual quadrature point, rather than just an index.
                 const Point<dim> q_point = fe_values.quadrature_point(q_index);
 
-                //Next, we loop over the heat functions, adding the numeric
-                //integral of each heat equation with each l component finite
-                //element, at the appropriate indices (which we found earlier).
-                //Note that if we try to add 0 to an uninitialized entry, there
-                //will not be a problem, but if we try to add a nonzero value
-                //to an uninitialized entry we will get an error. So, this part
-                //of the code checks that we adjusted the dsp correctly.
-                for(unsigned int j = 0; j<heat_functions.size(); ++j)
-                {
-                  system_matrix.add(local_dof_indices[i],
-                                    nonlocal_dofs[j],
-                                    heat_functions[j].value(q_point) * phi_i_l * JxW);
-                  system_matrix.add(nonlocal_dofs[j],
-                                    local_dof_indices[i],
-                                    heat_functions[j].value(q_point) * phi_i_l * JxW);
-                }
+                // Next, we loop over the heat functions, adding the numeric
+                // integral of each heat equation with each l component finite
+                // element, at the appropriate indices (which we found earlier).
+                // Note that if we try to add 0 to an uninitialized entry, there
+                // will not be a problem, but if we try to add a nonzero value
+                // to an uninitialized entry we will get an error. So, this part
+                // of the code checks that we adjusted the dsp correctly.
+                for (unsigned int j = 0; j < heat_functions.size(); ++j)
+                  {
+                    system_matrix.add(local_dof_indices[i],
+                                      nonlocal_dofs[j],
+                                      heat_functions[j].value(q_point) *
+                                        phi_i_l * JxW);
+                    system_matrix.add(nonlocal_dofs[j],
+                                      local_dof_indices[i],
+                                      heat_functions[j].value(q_point) *
+                                        phi_i_l * JxW);
+                  }
               }
           }
 
-        //Apply constraints
+        // Apply constraints
         constraints.distribute_local_to_global(
           cell_matrix, cell_rhs, local_dof_indices, system_matrix, system_rhs);
       }
 
-    //Interpolate and apply boundary values.
+    // Interpolate and apply boundary values.
     std::map<types::global_dof_index, double> boundary_values;
     VectorTools::interpolate_boundary_values(dof_handler,
                                              0,
@@ -603,17 +643,17 @@ namespace Step93
                                        system_rhs);
   }
 
-  //Solve works exactly the same as in other programs. However,
-  //notice that the conjugate gradient threshold should be small
-  //for good results. In general, this problem is poorly
-  //conditioned, so we need to allow for a long number of CG
-  //iterations to get convergence. There is a commented block
-  //of code which uses a direct solver, depending on the size
-  //of the problem this could be faster.
+  // Solve works exactly the same as in other programs. However,
+  // notice that the conjugate gradient threshold should be small
+  // for good results. In general, this problem is poorly
+  // conditioned, so we need to allow for a long number of CG
+  // iterations to get convergence. There is a commented block
+  // of code which uses a direct solver, depending on the size
+  // of the problem this could be faster.
   template <int dim>
   void Step93<dim>::solve()
   {
-    //Notice that we also time how long this process takes.
+    // Notice that we also time how long this process takes.
     std::cout << "Beginning solve" << std::endl;
     Timer timer;
 
@@ -629,15 +669,16 @@ namespace Step93
     std::cout << "Wall time: " << timer.wall_time() << "s" << std::endl;
   }
 
-  //The output_results() function is a bit more robust for this program than
-  //is typical. This is because, in order to visualize the heat functions,
-  //we need to do extra work and interpolate them onto a mesh. We do this
-  //by instantiating a new DoFHandler object and then using the helper
-  //function VectorTools::interpolate().
+  // The output_results() function is a bit more robust for this program than
+  // is typical. This is because, in order to visualize the heat functions,
+  // we need to do extra work and interpolate them onto a mesh. We do this
+  // by instantiating a new DoFHandler object and then using the helper
+  // function VectorTools::interpolate().
   template <int dim>
   void Step93<dim>::output_results() const
   {
-    //This part is standard for vector valued problems (cf. TODO: Cite VV tutorial)
+    // This part is standard for vector valued problems (cf. TODO: Cite VV
+    // tutorial)
     std::vector<std::string> solution_names(1, "u");
     solution_names.emplace_back("l");
     solution_names.emplace_back("c");
@@ -657,49 +698,51 @@ namespace Step93
     // Now, we create a new dummy dof handler to output the target function and
     // heat plate values
     DoFHandler<dim> toy_dof_handler(triangulation);
-    
-    //We use a finite element degree that matches what we used to solve for u and l,
-    //although in reality this is an arbitrary choice
+
+    // We use a finite element degree that matches what we used to solve for u
+    // and l, although in reality this is an arbitrary choice
     const FE_Q<dim> toy_fe(2);
     toy_dof_handler.distribute_dofs(toy_fe);
 
-    //This is a vector which stores the interpolated target function. We create
-    //the vector, interpolate it onto the mesh, then add the data to our data_out
-    //object.
+    // This is a vector which stores the interpolated target function. We create
+    // the vector, interpolate it onto the mesh, then add the data to our
+    // data_out object.
     Vector<double> target(toy_dof_handler.n_dofs());
     VectorTools::interpolate(toy_dof_handler, target_function, target);
     data_out.add_data_vector(toy_dof_handler, target, "TargetFunction");
 
-    //Next, we create a vector which will store the sum of all the heat
-    //functions.
+    // Next, we create a vector which will store the sum of all the heat
+    // functions.
     Vector<double> full_heat_profile(toy_dof_handler.n_dofs());
 
-    //Here, we loop through the heat functions, create a vector to store
-    //the interpolated data, call the interpolate() function to fill the
-    //vector, multiply the interpolated data by the nonlocal dof value
+    // Here, we loop through the heat functions, create a vector to store
+    // the interpolated data, call the interpolate() function to fill the
+    // vector, multiply the interpolated data by the nonlocal dof value
     //(so that the heat plate is set to the correct temperature), and
-    //then add this data to the data_out object. We also add this data
-    //vector to the full_heat_profile vector, which will display all
-    //the heat functions together at the end.
-    for(unsigned int i = 0; i<heat_functions.size(); ++i)
-    {
-      Vector<double> hot_plate_i(toy_dof_handler.n_dofs());
+    // then add this data to the data_out object. We also add this data
+    // vector to the full_heat_profile vector, which will display all
+    // the heat functions together at the end.
+    for (unsigned int i = 0; i < heat_functions.size(); ++i)
+      {
+        Vector<double> hot_plate_i(toy_dof_handler.n_dofs());
 
-      VectorTools::interpolate(toy_dof_handler, heat_functions[i], hot_plate_i);
+        VectorTools::interpolate(toy_dof_handler,
+                                 heat_functions[i],
+                                 hot_plate_i);
 
-      hot_plate_i *= solution[nonlocal_dofs[i]];
+        hot_plate_i *= solution[nonlocal_dofs[i]];
 
-      //Here we iteratively name the heat function data
-      std::string data_name = "Heat_Source_" + Utilities::int_to_string(i);
+        // Here we iteratively name the heat function data
+        std::string data_name = "Heat_Source_" + Utilities::int_to_string(i);
 
-      data_out.add_data_vector(toy_dof_handler, hot_plate_i, data_name);
+        data_out.add_data_vector(toy_dof_handler, hot_plate_i, data_name);
 
-      //add each individual heat function to the total profile
-      full_heat_profile += hot_plate_i;
-    }
+        // add each individual heat function to the total profile
+        full_heat_profile += hot_plate_i;
+      }
 
-    //Once all the heat functions have been combined, add them to the
-    //data_out object
+    // Once all the heat functions have been combined, add them to the
+    // data_out object
     data_out.add_data_vector(toy_dof_handler,
                              full_heat_profile,
                              "Full_Heat_Profile");
@@ -709,14 +752,16 @@ namespace Step93
     std::ofstream output("solution.vtu");
     data_out.write_vtu(output);
 
-    //Output the temperature settings to the console
+    // Output the temperature settings to the console
     std::cout << "The c coefficients were " << std::endl;
-    for(long unsigned int i = 0; i < nonlocal_dofs.size(); ++i){
-      std::cout << "\tc" << i+1 << ": " << solution[nonlocal_dofs[i]] << std::endl;
-    }
+    for (long unsigned int i = 0; i < nonlocal_dofs.size(); ++i)
+      {
+        std::cout << "\tc" << i + 1 << ": " << solution[nonlocal_dofs[i]]
+                  << std::endl;
+      }
   }
 
-  //Runs through each step of the program, nothing new here
+  // Runs through each step of the program, nothing new here
   template <int dim>
   void Step93<dim>::run()
   {
@@ -733,17 +778,17 @@ int main()
 {
   dealii::deallog.depth_console(2);
 
-  //The dimension for the problem. We use this in the loop below and
-  //in instantiating the Step93 object, so it gets stored in a variable
+  // The dimension for the problem. We use this in the loop below and
+  // in instantiating the Step93 object, so it gets stored in a variable
   const unsigned int dim = 2;
 
-  //Construct a center for the target function dependent on the
-  //dimension of the problem. The center point for the target
-  //function will be (0.5), (0.5, 0.5), (0.5, 0.5, 0.5), etc.
+  // Construct a center for the target function dependent on the
+  // dimension of the problem. The center point for the target
+  // function will be (0.5), (0.5, 0.5), (0.5, 0.5, 0.5), etc.
   dealii::Tensor<1, dim, double> center_setter;
-  for(unsigned int i = 0; i < dim; ++i)
+  for (unsigned int i = 0; i < dim; ++i)
     center_setter[i] = 0.5;
-  
+
   const dealii::Point<dim> center(center_setter);
 
   Step93::Step93<dim> heat_optimization_problem(center);
