@@ -115,7 +115,7 @@ The sumations are suggestive of matrix-vector multiplication, and in fact we can
 in such a form. Take $(\mathcal{M}_{i, j}) = \int_\Omega\varphi_i\varphi_j$, $(\mathcal{N}_{i, j})
  = \int_\Omega \nabla\varphi_i\cdot\nabla\varphi_j$, and $(\mathcal{F}_{j, k}) = \int_\Omega\varphi_j
  f_k$, and note that $\mathcal{F}$ is an $n\times m$ matrix. Then we get the matrix system
-
+ 
  @f{align*}{
   2\mathcal{M}U - 2\mathcal{M}\overline{U} - \mathcal{N}^T\Lambda  =& 0\\
   -\mathcal{N}U + \mathcal{F}^TC =& 0\\
@@ -133,7 +133,7 @@ idealized system to solve:
   \end{array}\right)
   \left(\begin{array}{c}
   U\\\Lambda\\ C
-  \end{array}\right) =
+  \end{array}\right) = 
   \left(\begin{array}{c}
   2\mathcal{M}\overline{U}\\0\\0
   \end{array}\right).
@@ -294,7 +294,10 @@ dimension of the problem). Each time we encounter a new cell, we
 change the hp finite element from an FE_System with a 3rd FE_Nothing
 component to an FE_System with a third FE_DGQ component. Calling
 distribute_dofs() after this is all we need to do to have the system set
-up correctly. Next, we need to
+up correctly. Next, we need to grab the indices of the FE_DGQ dofs. We
+do this by calling DoFTools::extract_dofs(), using a component mask to
+pick just the third component of the FE_System. We store these indices
+in a standard vector, and use them for the three parts below.
 
 When we construct the sparsity pattern, deal.ii implicitly assumes that
 only dofs that share a cell could have a non-zero entry in the matrix.
@@ -314,7 +317,7 @@ $\Lambda^j$ and $C^k$ derivatives.
 
 We take a similar approach when constructing the system matrix. We do
 the standard loop over cells, quadrature points, and dof indices. Normally,
-we would simply integrate the finite elements on the cell and add these
+we would simply integrate the finite elements on the cell and add these 
 values to a local matrix. However, because we are dealing with nonlocal dofs
 this approach won't work. Instead, we use the standard approach for
 constructing the $\mathcal{M}$ and $\mathcal{N}$ portions of the block system
@@ -322,17 +325,25 @@ matrix, but for the $\mathcal{F}$ portions we need to numerically integrate
 each finite element against the nonlocal $f_k$ functions, and enter the
 resulting value in the correct location in the system matrix. To do the integration,
 we simply instantiate a Point object for the quadrature point and pass this
-to the $f_k$ functions, keeping all other aspects of integration the same.
+to the $f_k$ functions, keeping all other aspects of integration the same. We
+then use the extracted dof indices to add the integrated value to the system
+matrix, using the loop's current dof index as the other index. To construct
+the system rhs correctly, we first need to intepolate the target function onto
+the mesh. We then multiply this coefficient vector by the $\mathcal{M}$ matrix,
+which is constructed as usual (cf. step-4), doing the matrix-vector product in
+the same loop where the matrix is constructed.
 
-, but
-then we check if each quadrature point is in the domain of each $f_k$
-function, and if it is we
+Finally, to properly visualize the solution and constituent parts of the program,
+we need to correctly interpret the nonlocal dofs. We do this by interpolating the
+$f_k$ functions onto a smaller dof_handler (one which has only one FE_Q element),
+then multiplying by the corresponding coefficient $c_k$. For this program, we also
+add together all the individual $c_k\cdot f_k$ to visualize $f$, and intepolate the
+target function as well. These steps (for the $f_k$) all occur in a loop, which makes
+scaling the number of nonlocal dofs relatively straightforward.
 
+TODO: I think I've said all there is to say about what I did. Is this too technical?
+I definitely say the same thing at times in the code comments, but maybe here it is
+in broader terms whereas in the code it is specific to a few lines.
 
-
-
-TODO: Sam, feel free to describe in a paragraph each all of the places
-where you have to do something special. For example, find the DoF
-indices of the nonlocal DoFs; build the sparsity pattern; build matrix
-entries; etc.
+TODO: Do I need a conclusion or transition to the commented code section?
 
