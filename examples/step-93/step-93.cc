@@ -79,15 +79,15 @@ namespace Step93
     TargetFunction(const unsigned int n_components = 1)
       : Function<dim>(n_components)
       , center(Point<dim>(0))
-      , radius(0.1){};
-    // Overloaded contructor
+      , radius(.1){};
+    // Overloaded constructor
     //
     // Parameters:
     //   center: a constant Point pointer used to set the member variable center
     //   radius: a constant double used to set the member variable radius
     TargetFunction(const unsigned int n_components,
                    const Point<dim>  &center,
-                   const double       radius = .1)
+                   const double       radius = .3)
       : Function<dim>(n_components)
       , center(center)
       , radius(radius){};
@@ -119,7 +119,7 @@ namespace Step93
 
         // This code is for a step target function
         if ((p - center).norm() <= radius)
-          return 12;
+          return 1;
         else
           return 0;
       }

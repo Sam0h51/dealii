@@ -7,14 +7,14 @@ Number of active cells: 16384
 Number of degrees of freedom: 66049+66049+66049 = 132102
 Number of nonlocal dofs: 4
 Beginning solve
-DEAL:cg::Starting value 0.0360988
-DEAL:cg::Convergence step 50035 value 3.59136e-08
-Wall time: 62.6882s
+DEAL:cg::Starting value 0.00920272
+DEAL:cg::Convergence step 78659 value 9.18024e-09
+Wall time: 125.98s
 The c coefficients were
-	c1: 52.9442
-	c2: -13.3933
-	c3: -13.3933
-	c4: -2.70689
+	c1: 28.754
+	c2: -6.5185
+	c3: -6.5185
+	c4: -1.62126
 @endcode
 
 When you run the program with the Gaussian target function (in 2D), the output should look like:
@@ -24,49 +24,125 @@ Number of active cells: 16384
 Number of degrees of freedom: 66049+66049+66049 = 132102
 Number of nonlocal dofs: 4
 Beginning solve
-DEAL:cg::Starting value 0.00217483
-DEAL:cg::Convergence step 44323 value 2.05891e-09
-Wall time: 50.913s
+DEAL:cg::Starting value 0.00652442
+DEAL:cg::Convergence step 103983 value 6.44304e-09
+Wall time: 140.069s
 The c coefficients were
-	c1: 4.31296
-	c2: -1.07943
-	c3: -1.07943
-	c4: -0.222837
+	c1: 23.553
+	c2: -4.86562
+	c3: -4.86562
+	c4: -1.42344
 @endcode
 
 The goal of this program is to determine which temperature settings best match the target function, so first lets see what these targets look like
 
-TODO: Visualize step and Gaussian, side by side if possible
+<div class="twocolumn" style="width: 80%">
+  <div>
+    <center><b>Step Target Function</b></center>
+  </div>
+  <div>
+    <center><b>Gaussian Target Function</b></center>
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/11wA6-q-0IbgSCrCIgTaymEeUl1baPRkT"
+         alt="Step target function">
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1DCQ4rxUB1fqhR25FzcwoLk-k8cFJ5rA2"
+         alt="Gaussian target function">
+  </div>
+</div>
 
-After solving the Lagrangian system, we arrive at solutions $U_step$ and $U_gauss$ that look like:
+After solving the Lagrangian system, we arrive at solutions $U_{step}$ and $U_{gauss}$ that look like:
 
-TODO: Visualize the solutions, with the same color scale
+<div class="twocolumn" style="width: 80%">
+  <div>
+    <center><b>$U_{step}$</b></center>
+  </div>
+  <div>
+    <center><b>$U_{gauss}$</b></center>
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1IdYPidHwSwMXLJE-PMoBDPlKo5Zqd3WA"
+         alt="Solution for step shaped target function">
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1pnd7X_T83X4Gq9J-pnNOQSBWDGdWvcqT"
+         alt="Solution for Gaussian target function">
+  </div>
+</div>
 
-Notice that $U_gauss$ matches the target much better than $U_step$. Intuitively, this makes sense: in general, solutions to the heat equation look something like Gaussian curves, so the Gaussian target function is a much more "natural" thing to match than a sharp step function. We can also see this in the optimal heat profiles.
+Notice that $U_{gauss}$ matches the target much better than $U_{step}$. Intuitively, this makes sense: in general, solutions to the heat equation look something like Gaussian curves, so the Gaussian target function is a much more "natural" thing to match than a sharp step function. We can also see this in the optimal heat profiles.
 
-TODO: Visualize the full heat profile in each case
+<div class="twocolumn" style="width: 80%">
+  <div>
+    <center><b>Heat plate settings for matching step function</b></center>
+  </div>
+  <div>
+    <center><b>Heat plate settings for matching Gaussian</b></center>
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1KrKkycAJFtXcBnR6uAZDw-3e_6ReUnVJ"
+         alt="Heat plate settings for matching step function">
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1-iem3xU1MlnDsVF1OImgJ49v79bSehMG"
+         alt="Heat plate settings for matching Gaussian">
+  </div>
+</div>
 
 Notice that for the Gaussian target, the 4 plates have relatively low values that they are set to. In contrast, to try to match the step function, much more extreme temperatures are applied.
 
 While it does not contain much useful information, we can also plot the Lagrange multiplier $\Lambda$, which has an interesting shape:
 
-TODO: Visualize $\Lambda$ for each case
+<div class="twocolumn" style="width: 80%">
+  <div>
+    <center><b>$\Lambda_{step}$</b></center>
+  </div>
+  <div>
+    <center><b>$\Lambda_{gauss}$</b></center>
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1SGM3UYai_fShVff40pjw8y3V7Bv-94mz"
+         alt="Lagrange multiplier for step target function">
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1XiSPtr4vpuxI6PEaa7tOwpDqqo6mWeYV"
+         alt="Lagrange multiplier for Gaussian target function">
+  </div>
+</div>
 
 We can also plot the third scalar field, used for the nonlocal dofs, to see how we get these dofs
 
-TODO: Plot $C$ field
+<div class="twocolumn" style="width: 80%">
+  <div>
+    <center><b>$C_{step}$</b></center>
+  </div>
+  <div>
+    <center><b>$C_{gauss}$</b></center>
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1qkb1xS0pUZdYImQZa-Yr0Oh_sDfdRY7B"
+         alt="Plot of nonlocal dofs for step target function run">
+  </div>
+  <div>
+    <img src="https://lh3.googleusercontent.com/d/1VhTjzGxI5-IAuI_5UH8e_waQ0hrFGPwW"
+         alt="Plot of nonlocal dofs for Gaussian target function run">
+  </div>
+</div>
 
 Notice that since we are using DG_Q elements, it does not matter that the nonlocal dofs live on the boundary.
 
-<h3>Possibilites for extensions</h3>
+<h3>Possibilities for extensions</h3>
 
 IDEAS:
-* Control function which requires more than one dof
-* Adaptively refined mesh
-* Regex function (target and control), systematic determination of number of non-local dofs required
-* Coupled problem: isolated region with target heat profile, heat distribution on larger area
-* Method of manufactured solutions for target function: should be able to match perfectly
-* Quantify how good the match is
+
+- Control function which requires more than one dof
+- Adaptively refined mesh
+- Regex function (target and control), systematic determination of number of non-local dofs required
+- Coupled problem: isolated region with target heat profile, heat distribution on larger area
+- Method of manufactured solutions for target function: should be able to match perfectly
+- Quantify how good the match is
 
 TODO: Wolfgang, what should go here? I've listed above ways that I would extend this project, but I don't know how to do these things right now. Should the extensions section be this technical, or should it be small things someone could do to deepen understanding?
 

@@ -139,7 +139,7 @@ idealized system to solve:
   \end{array}\right).
 @f}
 
-Unfotunately, this type of block matrix, where some of the blocks have different dimensions
+Unfortunately, this type of block matrix, where some of the blocks have different dimensions
 than others, does not work well with deal.ii's internal structure. So, we will need to
 modify how this problem is constructed to work well with deal.ii, which is discussed below.
 
@@ -328,7 +328,7 @@ we simply instantiate a Point object for the quadrature point and pass this
 to the $f_k$ functions, keeping all other aspects of integration the same. We
 then use the extracted dof indices to add the integrated value to the system
 matrix, using the loop's current dof index as the other index. To construct
-the system rhs correctly, we first need to intepolate the target function onto
+the system rhs correctly, we first need to interpolate the target function onto
 the mesh. We then multiply this coefficient vector by the $\mathcal{M}$ matrix,
 which is constructed as usual (cf. step-4), doing the matrix-vector product in
 the same loop where the matrix is constructed.
@@ -337,7 +337,7 @@ Finally, to properly visualize the solution and constituent parts of the program
 we need to correctly interpret the nonlocal dofs. We do this by interpolating the
 $f_k$ functions onto a smaller dof_handler (one which has only one FE_Q element),
 then multiplying by the corresponding coefficient $c_k$. For this program, we also
-add together all the individual $c_k\cdot f_k$ to visualize $f$, and intepolate the
+add together all the individual $c_k\cdot f_k$ to visualize $f$, and interpolate the
 target function as well. These steps (for the $f_k$) all occur in a loop, which makes
 scaling the number of nonlocal dofs relatively straightforward.
 
