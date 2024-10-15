@@ -74,7 +74,7 @@ Note the application of integration by parts above, which makes use of the Diric
   f = \sum_{k=0}^m C^k f_k,
 @f}
 
-where each $f_k$ is something simple (in this example, each $f_k$ is a $\chi$ function and $m=4$). Then the Lagrangian becomes
+where each $f_k$ is something simple (in this example, each $f_k$ is a $\chi$ function and $m=4$). Then the Lagrangian becomes TODO: Should I put a picture of the $f_k$ functions here?
 
 @f{align*}{
   L_n =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j

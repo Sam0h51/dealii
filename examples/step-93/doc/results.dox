@@ -1,2 +1,73 @@
 <h1>Results</h1>
 
+When you run the program with the step target function (in 2D), the output looks something like:
+
+@code
+Number of active cells: 16384
+Number of degrees of freedom: 66049+66049+66049 = 132102
+Number of nonlocal dofs: 4
+Beginning solve
+DEAL:cg::Starting value 0.0360988
+DEAL:cg::Convergence step 50035 value 3.59136e-08
+Wall time: 62.6882s
+The c coefficients were 
+	c1: 52.9442
+	c2: -13.3933
+	c3: -13.3933
+	c4: -2.70689
+@endcode
+
+When you run the program with the Gaussian target function (in 2D), the output should look like:
+
+@code
+Number of active cells: 16384
+Number of degrees of freedom: 66049+66049+66049 = 132102
+Number of nonlocal dofs: 4
+Beginning solve
+DEAL:cg::Starting value 0.00217483
+DEAL:cg::Convergence step 44323 value 2.05891e-09
+Wall time: 50.913s
+The c coefficients were 
+	c1: 4.31296
+	c2: -1.07943
+	c3: -1.07943
+	c4: -0.222837
+@endcode
+
+The goal of this program is to determine which temperature settings best match the target function, so first lets see what these targets look like
+
+TODO: Visualize step and Gaussian, side by side if possible
+
+After solving the Lagrangian system, we arrive at solutions $U_step$ and $U_gauss$ that look like:
+
+TODO: Visualize the solutions, with the same color scale
+
+Notice that $U_gauss$ matches the target much better than $U_step$. Intuitively, this makes sense: in general, solutions to the heat equation look something like Gaussian curves, so the Gaussian target function is a much more "natural" thing to match than a sharp step function. We can also see this in the optimal heat profiles.
+
+TODO: Visualize the full heat profile in each case
+
+Notice that for the Gaussian target, the 4 plates have relatively low values that they are set to. In contrast, to try to match the step function, much more extreme temperatures are applied.
+
+While it does not contain much useful information, we can also plot the Lagrange multiplier $\Lambda$, which has an interesting shape:
+
+TODO: Visualize $\Lambda$ for each case
+
+We can also plot the third scalar field, used for the nonlocal dofs, to see how we get these dofs
+
+TODO: Plot $C$ field
+
+Notice that since we are using DG_Q elements, it does not matter that the nonlocal dofs live on the boundary.
+
+<h3>Possibilites for extensions</h3>
+
+IDEAS:
+* Control function which requires more than one dof
+* Adaptively refined mesh
+* Regex function (target and control), systematic determination of number of non-local dofs required
+* Coupled problem: isolated region with target heat profile, heat distribution on larger area
+* Method of manufactured solutions for target function: should be able to match perfectly
+* Quantify how good the match is
+
+TODO: Wolfgang, what should go here? I've listed above ways that I would extend this project, but I don't know how to do these things right now. Should the extensions section be this technical, or should it be small things someone could do to deepen understanding?
+
+TODO: How should I do images for this program? Do I need to upload them separately?
