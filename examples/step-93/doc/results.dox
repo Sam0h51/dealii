@@ -10,7 +10,7 @@ Beginning solve
 DEAL:cg::Starting value 0.0360988
 DEAL:cg::Convergence step 50035 value 3.59136e-08
 Wall time: 62.6882s
-The c coefficients were 
+The c coefficients were
 	c1: 52.9442
 	c2: -13.3933
 	c3: -13.3933
@@ -27,7 +27,7 @@ Beginning solve
 DEAL:cg::Starting value 0.00217483
 DEAL:cg::Convergence step 44323 value 2.05891e-09
 Wall time: 50.913s
-The c coefficients were 
+The c coefficients were
 	c1: 4.31296
 	c2: -1.07943
 	c3: -1.07943

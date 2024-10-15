@@ -115,7 +115,7 @@ The sumations are suggestive of matrix-vector multiplication, and in fact we can
 in such a form. Take $(\mathcal{M}_{i, j}) = \int_\Omega\varphi_i\varphi_j$, $(\mathcal{N}_{i, j})
  = \int_\Omega \nabla\varphi_i\cdot\nabla\varphi_j$, and $(\mathcal{F}_{j, k}) = \int_\Omega\varphi_j
  f_k$, and note that $\mathcal{F}$ is an $n\times m$ matrix. Then we get the matrix system
- 
+
  @f{align*}{
   2\mathcal{M}U - 2\mathcal{M}\overline{U} - \mathcal{N}^T\Lambda  =& 0\\
   -\mathcal{N}U + \mathcal{F}^TC =& 0\\
@@ -133,7 +133,7 @@ idealized system to solve:
   \end{array}\right)
   \left(\begin{array}{c}
   U\\\Lambda\\ C
-  \end{array}\right) = 
+  \end{array}\right) =
   \left(\begin{array}{c}
   2\mathcal{M}\overline{U}\\0\\0
   \end{array}\right).
@@ -317,7 +317,7 @@ $\Lambda^j$ and $C^k$ derivatives.
 
 We take a similar approach when constructing the system matrix. We do
 the standard loop over cells, quadrature points, and dof indices. Normally,
-we would simply integrate the finite elements on the cell and add these 
+we would simply integrate the finite elements on the cell and add these
 values to a local matrix. However, because we are dealing with nonlocal dofs
 this approach won't work. Instead, we use the standard approach for
 constructing the $\mathcal{M}$ and $\mathcal{N}$ portions of the block system

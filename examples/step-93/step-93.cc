@@ -118,7 +118,7 @@ namespace Step93
         // std::exp(-((p-center).norm()*(p-center).norm())/(radius*radius));
 
         // This code is for a step target function
-        if ((p - center).norm() <= 0.1)
+        if ((p - center).norm() <= radius)
           return 12;
         else
           return 0;
