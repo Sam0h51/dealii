@@ -6,7 +6,7 @@ discretizations of partial differential equations posed on a
 triangulation where, then, every degree of freedom was associated with
 a node that was clearly part of one cell or another. This was true
 whether we were solving a single differential equation (say, in step-4
-or step-8), or a system of coupled equations (step-8, step-22, and
+or step-6), or a system of coupled equations (step-8, step-22, and
 many others). In other words, the *unknowns* we were considering were
 always functions of space (and, sometimes time) that we discretized on
 a triangulation.
@@ -20,7 +20,7 @@ C_4$ of these four heaters so that the temperature $u(\mathbf x)$ of
 the body is as close as possible to a desired state? The issue here is
 that we have one unknown that is a function (namely, the temperature
 $u(\mathbf x)$) for which we can apply the usual finite element
-approximation, but we also have four scalars $f_i$ that are *not*
+approximation, but we also have four scalars $C_i$ that are *not*
 functions and that, after discretization of the whole problem, are not
 tied to one of the cells of the mesh. As a consequence, we call these
 unknowns *non-local degrees of freedom* to represent that they are not
@@ -41,7 +41,7 @@ which is as close as
 possible to a desired solution $\overline{u}$. We can formulate this as an optimization problem
 
 @f{align*}{
-  \min_{u} &||u-\overline{u}||^2\\
+  \min_{u, f} &||u-\overline{u}||^2\\
   \text{s.t.} & -\Delta u = f.
 @f}
 
@@ -68,7 +68,7 @@ will use the second approach here. The discretized Lagrangian is
    + \sum_{i=0}^n \left[\Lambda^i\int_{\Omega}\varphi_i f\right].
 @f}
 
-Note the application of integration by parts above, which makes use of the Dirichelt boundary conditions to eliminate the boundary integral. Further, suppose we can write the right hand side function $f$ as
+Note the application of integration by parts above, which makes use of the Dirichlet boundary conditions to eliminate the boundary integral. Further, suppose we can write the right hand side function $f$ as
 
 @f{align*}{
   f = \sum_{k=0}^m C^k f_k,
@@ -140,8 +140,8 @@ idealized system to solve:
 @f}
 
 Unfortunately, this type of block matrix, where some of the blocks have different dimensions
-than others, does not work well with deal.ii's internal structure. So, we will need to
-modify how this problem is constructed to work well with deal.ii, which is discussed below.
+than others, does not work well with deal.II's internal structure. So, we will need to
+modify how this problem is constructed to work well with deal.II, which is discussed below.
 
 
 TODO: Wolfgang, I feel like this does not transition well to the next section. Do you have thoughts?
@@ -299,7 +299,7 @@ do this by calling DoFTools::extract_dofs(), using a component mask to
 pick just the third component of the FE_System. We store these indices
 in a standard vector, and use them for the three parts below.
 
-When we construct the sparsity pattern, deal.ii implicitly assumes that
+When we construct the sparsity pattern, deal.II implicitly assumes that
 only dofs that share a cell could have a non-zero entry in the matrix.
 Consequently, when working with non-local dofs, the sparsity pattern that
 DoFTools::make_sparsity_pattern() creates will omit entries that in fact

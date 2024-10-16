@@ -232,17 +232,18 @@ namespace Step93
     Vector<double> solution;
     Vector<double> system_rhs;
 
-    // This stores the indices of the DGQ elements which serve as the nonlocal dofs
+    // This stores the indices of the DGQ elements which serve as the nonlocal
+    // dofs
     std::vector<types::global_dof_index> nonlocal_dofs;
 
-    // This is a vector of points which record the centers of the non-local dofs. A circular
-    // step function centered at each point will be interpolated later in the
-    // program. Since each step function is wider than a single cell, we must
-    // have non-local dofs to capture this behavior.
+    // This is a vector of points which record the centers of the non-local
+    // dofs. A circular step function centered at each point will be
+    // interpolated later in the program. Since each step function is wider than
+    // a single cell, we must have non-local dofs to capture this behavior.
     std::vector<Point<dim>> heat_centers;
 
-    // This stores a vector of indicator functions, which are used for assembling
-    // the system and again when outputting the results.
+    // This stores a vector of indicator functions, which are used for
+    // assembling the system and again when outputting the results.
     std::vector<CircularIndicatorFunction<dim>> heat_functions;
 
     // This stores the TargetFunction object used to construct the system rhs in
@@ -282,7 +283,8 @@ namespace Step93
 
     for (int i = 0; i < std::pow(2, dim); ++i)
       {
-        // Here we initialize a 1 x dim tensor to store the coordinates of the point
+        // Here we initialize a 1 x dim tensor to store the coordinates of the
+        // point
         Tensor<1, dim, double> temp_point;
         for (int j = 0; j < dim; ++j)
           {
@@ -407,7 +409,8 @@ namespace Step93
       }
     dof_handler.distribute_dofs(fe_collection);
 
-    // This code block counts the number of dofs in the system, and outputs to the console
+    // This code block counts the number of dofs in the system, and outputs to
+    // the console
     const std::vector<types::global_dof_index> dofs_per_component =
       DoFTools::count_dofs_per_fe_component(dof_handler);
     const unsigned int dofs_per_u = dofs_per_component[0],
@@ -495,8 +498,8 @@ namespace Step93
 
                 for (unsigned int j = 0; j < heat_functions.size(); ++j)
                   {
-                    // This checks if q_point is within the desired radius of the
-                    // heat_center, and if phi_i_l is not zero at this
+                    // This checks if q_point is within the desired radius of
+                    // the heat_center, and if phi_i_l is not zero at this
                     // quadrature point. If so, adds requisite entries to the
                     // sparsity pattern.
                     if (heat_functions[j].value(q_point) > 1e-2 && phi_i_l != 0)
@@ -668,8 +671,8 @@ namespace Step93
 
     solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
 
-    //This is code to use a direct solver rather than a CG solver. Comment out the above block and
-    //uncomment this block to use this.
+    // This is code to use a direct solver rather than a CG solver. Comment out
+    // the above block and uncomment this block to use this.
     /* SparseDirectUMFPACK direct_solver;
     direct_solver.initialize(system_matrix);
     direct_solver.vmult(solution, system_rhs); */
@@ -786,13 +789,14 @@ int main()
 {
   dealii::deallog.depth_console(2);
 
-  // This integer is the dimension for the problem. We use this in the loop below and
-  // in instantiating the Step93 object, so it gets stored in a variable
+  // This integer is the dimension for the problem. We use this in the loop
+  // below and in instantiating the Step93 object, so it gets stored in a
+  // variable
   const unsigned int dim = 2;
 
-  // This piece of code constructs a center for the target function dependent on the
-  // dimension of the problem. The center point for the target
-  // function will be (0.5), (0.5, 0.5), (0.5, 0.5, 0.5), etc.
+  // This piece of code constructs a center for the target function dependent on
+  // the dimension of the problem. The center point for the target function will
+  // be (0.5), (0.5, 0.5), (0.5, 0.5, 0.5), etc.
   dealii::Tensor<1, dim, double> center_setter;
   for (unsigned int i = 0; i < dim; ++i)
     center_setter[i] = 0.5;
