@@ -1,3 +1,6 @@
+<i>This program was contributed by Sam Scheuerman and Wolfgang
+Bangerth.</i>
+
 <a name="step-93-Intro"></a>
 <h1>Introduction</h1>
 
@@ -30,7 +33,7 @@ result of a discretization process.
 
 Before going into how we solve this issue, let us first state the concrete set of equations.
 
-We want to find a solution $u$ to the heat equation
+We want to find a solution $u$ to the Poisson equation
 
 @f{align*}{
   -\Delta u =& f \text{ in }\Omega\\
@@ -48,7 +51,7 @@ possible to a desired solution $\overline{u}$. We can formulate this as an optim
 To make this more compact, we phrase it as a Lagrangian
 
 @f{align*}{
-  L = ||u - \overline{u}||^2 - (\lambda, -\Delta u - f),
+  L = \frac{1}{2}||u - \overline{u}||^2 - (\lambda, -\Delta u - f),
 @f}
 
 where $\lambda$ is a Lagrange multiplier and $(\cdot, \cdot)$ denotes an $L^2$ scalar
@@ -61,23 +64,26 @@ determine the optimality conditions for the discrete system (discretize then opt
 will use the second approach here. The discretized Lagrangian is
 
 @f{align*}{
-  L_n =& ||U - \overline{U}||^2 - (\Lambda, -\Delta U - F)\\
-   =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
+  L_n =& \frac{1}{2}||u_h - \overline{u}_h||^2 - (\lambda_h, -\Delta u_h - f)\\
+   =& \frac{1}{2}\sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
    - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right]
    - \sum_{i=0}^n\sum_{j=0}^n\left[\Lambda^iU^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
    + \sum_{i=0}^n \left[\Lambda^i\int_{\Omega}\varphi_i f\right].
 @f}
 
-Note the application of integration by parts above, which makes use of the Dirichlet boundary conditions to eliminate the boundary integral. Further, suppose we can write the right hand side function $f$ as
+where
 
 @f{align*}{
-  f = \sum_{k=0}^m C^k f_k,
+  u_h(x) =& \sum_i^n U^i\varphi_i(x),\\
+  \overline{u}_h =& \sum_i^n\overline{U}^i\varphi_i,\\
+  \lambda_h =& \sum_j^n \Lambda^j\varphi_j,\text{ and}\\
+  f =& \sum_{k=0}^m C^k f_k.
 @f}
 
-where each $f_k$ is something simple (in this example, each $f_k$ is a $\chi$ function and $m=4$). Then the Lagrangian becomes TODO: Should I put a picture of the $f_k$ functions here?
+Note the application of integration by parts above, which makes use of the Dirichlet boundary conditions to eliminate the boundary integral. Implicitly, we assume that each $f_k$ is something simple (in this example, each $f_k$ is a characteristic function and $m=4$). Then the Lagrangian becomes TODO: Should I put a picture of the $f_k$ functions here?
 
 @f{align*}{
-  L_n =& \sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
+  L_n =& \frac{1}{2}\sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
    - \overline{U}^j)\int_{\Omega}\varphi_i\varphi_j\right]
    - \sum_{i=0}^n\sum_{j=0}^n\left[\Lambda^jU^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
    + \sum_{j=0}^n\sum_{k=0}^m \left[\Lambda^iC^k\int_{\Omega}\varphi_i f_k\right].
@@ -99,9 +105,6 @@ To find a minimum, we take a partial derivative with respect to each $U^i$,
 As with many other minimization problems, we can observe that for a minimum to occur,
 these derivatives must all be 0. This gives us $n + n + m$ linear equations to solve
 for the coefficient vectors $U$, $\Lambda$, and $C$:
-
-TODO: Am I counting the DoFs correctly? I think $N_U$ and $N_\Lambda$ can be different
-if they're using different FE_Q degrees, but I'm not sure where that shows up.
 
 @f{align*}{
   \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
@@ -139,13 +142,9 @@ idealized system to solve:
   \end{array}\right).
 @f}
 
-Unfortunately, this type of block matrix, where some of the blocks have different dimensions
-than others, does not work well with deal.II's internal structure. So, we will need to
+Unfortunately, setting up this type of block matrix, where some of the dofs couple in a
+nonlocal way, does not work well with deal.II's internal structure. So, we will need to
 modify how this problem is constructed to work well with deal.II, which is discussed below.
-
-
-TODO: Wolfgang, I feel like this does not transition well to the next section. Do you have thoughts?
-
 
 <h3>What is the problem?</h3>
 
@@ -158,10 +157,12 @@ You will then end up with $N_U$ variables for the finite element
 approximation of the temperature, and $N_\Lambda$ variables for the
 finite element approximation of the Lagrange multiplier, and all of
 these $N_U+N_\Lambda$ unknowns live on the triangulation in the form
-of a DoFHAndler object.
+of a DoFHandler object. While in principle $N_U$ and $N_\Lambda$ can
+be different, in practice it is best to keep them the same, so we have
+that $N_U = N_\Lambda = n$.
 
-The problem then is that what you really want is a linear system of
-$N=N_U+N_\Lambda+N_f$ unknowns that includes the $N_f=4$ degrees of
+Now the problem is that what you really want is a linear system of
+$N=n + n + m$ unknowns that includes the $m = 4$ degrees of
 freedom for the source strengths we are trying to optimize for: We
 need a matrix of size $N\times N$, and solution and right hand side
 vectors of size $N$. Moreover, if you try to build a block linear
@@ -176,13 +177,13 @@ a DoFHandler. You just need a way to translate between the index of a
 degree of freedom in a DoFHandler and the corresponding row and column
 in a linear system. Here, perhaps one would make the choice that the
 mesh-based degrees of freedom (which the DoFHandler numbers from zero
-to $N_U+N_\Lambda-1$) come first, and the four $N_f$ additional scalar
-unknowns come last. The fact that we need to spell out such a
+to $n+n-1$) come first, and the four $C_k$ additional scalar
+unknowns come last. (TODO: Rephrase maybe) The fact that we need to spell out such a
 convention -- which in most codes would be entirely implicit, rather
 than enforced through explicit means -- should give you a first hint
 that something with this kind of design is wrong. For example, we can
 not renumber all degrees of freedom with the functions in
-DoFRenumbering in arbitrary ways if we want the $N_f$ additional
+DoFRenumbering in arbitrary ways if we want the $m$ additional
 variables always at the end.
 
 Precisely because it is so easy to make mistakes and because it is so
@@ -206,9 +207,9 @@ make this connection, and the way better be explicit (by way of a
 function that translates from DoF index to row and column) or there
 would be no end to the possibility of introducing bugs.
 
-In other words, the fact that we want to have $N_U+N_\Lambda$ degrees
+In other words, the fact that we want to have $2n$ degrees
 of freedom in the DoFHandler, but matrices and vectors with
-$N_U+N_\Lambda+N_f$ rows and columns does not work with deal.II's
+$2n + m$ rows and columns does not work with deal.II's
 underlying design decisions. Creating matrices and vectors that happen
 to be larger is going to trigger lots of assertions, and for good
 reasons.
@@ -228,7 +229,7 @@ going to use is not what one would generally call "obvious" or
 (even though this infrastructure was originally built for other
 purposes).
 
-The key to the following is that deal.II allows (i) using different
+The key to the following is that deal.II (i) allows using different
 finite elements on different cells, originally intended to support
 $hp$ finite elements; and (ii) has elements that have no degrees of
 freedom. We have used these features in other tutorial programs:
@@ -282,10 +283,11 @@ system matrix/right hand side.
 
 <h3>What concrete steps do we need to take?</h3>
 
-There are three places in the standard finite element code where we will
-need to take special care: constructing the sparsity pattern, constructing
-the system matrix and system rhs, and outputting results. Before all of,
-though, we need to determine which of the FE_Nothing elements becomes
+There are four places in the standard finite element code where we will
+need to take special care: assigning FE_DGQ elements, constructing the sparsity pattern, constructing
+the system matrix and system rhs, and outputting results.
+
+1. First, we need to determine which of the FE_Nothing elements becomes
 FE_DGQ elements. We do this in setup_system(), before dofs are distributed.
 Since we are using FE_DGQ elements, we don't need to worry about boundary
 conditions affecting the nonlocal dofs, so we simply enumerate the cells
@@ -299,7 +301,7 @@ do this by calling DoFTools::extract_dofs(), using a component mask to
 pick just the third component of the FE_System. We store these indices
 in a standard vector, and use them for the three parts below.
 
-When we construct the sparsity pattern, deal.II implicitly assumes that
+2. When we construct the sparsity pattern, deal.II implicitly assumes that
 only dofs that share a cell could have a non-zero entry in the matrix.
 Consequently, when working with non-local dofs, the sparsity pattern that
 DoFTools::make_sparsity_pattern() creates will omit entries that in fact
@@ -315,7 +317,7 @@ where the $\Lambda$ component of the FESystem is nonzero, because we only
 deal with the nonlocal functions in the equations stemming from the
 $\Lambda^j$ and $C^k$ derivatives.
 
-We take a similar approach when constructing the system matrix. We do
+3. We take a similar approach when constructing the system matrix. We do
 the standard loop over cells, quadrature points, and dof indices. Normally,
 we would simply integrate the finite elements on the cell and add these
 values to a local matrix. However, because we are dealing with nonlocal dofs
@@ -333,7 +335,7 @@ the mesh. We then multiply this coefficient vector by the $\mathcal{M}$ matrix,
 which is constructed as usual (cf. step-4), doing the matrix-vector product in
 the same loop where the matrix is constructed.
 
-Finally, to properly visualize the solution and constituent parts of the program,
+4. Finally, to properly visualize the solution and constituent parts of the program,
 we need to correctly interpret the nonlocal dofs. We do this by interpolating the
 $f_k$ functions onto a smaller dof_handler (one which has only one FE_Q element),
 then multiplying by the corresponding coefficient $c_k$. For this program, we also
@@ -341,9 +343,5 @@ add together all the individual $c_k\cdot f_k$ to visualize $f$, and interpolate
 target function as well. These steps (for the $f_k$) all occur in a loop, which makes
 scaling the number of nonlocal dofs relatively straightforward.
 
-TODO: I think I've said all there is to say about what I did. Is this too technical?
-I definitely say the same thing at times in the code comments, but maybe here it is
-in broader terms whereas in the code it is specific to a few lines.
-
-TODO: Do I need a conclusion or transition to the commented code section?
+To see how we actually do these things, let's look at the actual code.
 
