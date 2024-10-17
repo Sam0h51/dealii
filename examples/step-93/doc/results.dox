@@ -7,9 +7,9 @@ Number of active cells: 16384
 Number of degrees of freedom: 66049+66049+66049 = 132102
 Number of nonlocal dofs: 4
 Beginning solve
-DEAL:cg::Starting value 0.00920272
-DEAL:cg::Convergence step 78659 value 9.18024e-09
-Wall time: 125.98s
+DEAL:minres::Starting value 0.00460136
+DEAL:minres::Convergence step 39947 value 4.59753e-09
+Wall time: 60.3742s
 The c coefficients were
 	c1: 28.754
 	c2: -6.5185
@@ -24,9 +24,9 @@ Number of active cells: 16384
 Number of degrees of freedom: 66049+66049+66049 = 132102
 Number of nonlocal dofs: 4
 Beginning solve
-DEAL:cg::Starting value 0.00652442
-DEAL:cg::Convergence step 103983 value 6.44304e-09
-Wall time: 140.069s
+DEAL:minres::Starting value 0.00326221
+DEAL:minres::Convergence step 62131 value 3.17291e-09
+Wall time: 85.987s
 The c coefficients were
 	c1: 23.553
 	c2: -4.86562
@@ -44,11 +44,11 @@ The goal of this program is to determine which temperature settings best match t
     <center><b>Gaussian Target Function</b></center>
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/11wA6-q-0IbgSCrCIgTaymEeUl1baPRkT"
+    <img src="https://lh3.googleusercontent.com/d/1otECph0YD1P6i7mbhxUEgBBND_lzUgZ5"
          alt="Step target function">
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1DCQ4rxUB1fqhR25FzcwoLk-k8cFJ5rA2"
+    <img src="https://lh3.googleusercontent.com/d/151HH1SgZnCOboQck-zw-FTyckVXTe7_T"
          alt="Gaussian target function">
   </div>
 </div>
@@ -63,11 +63,11 @@ After solving the Lagrangian system, we arrive at solutions $U_{step}$ and $U_{g
     <center><b>$U_{gauss}$</b></center>
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1IdYPidHwSwMXLJE-PMoBDPlKo5Zqd3WA"
+    <img src="https://lh3.googleusercontent.com/d/1Fe80xChN6LnF2gLWkOt6apUNx8vo9-SU"
          alt="Solution for step shaped target function">
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1pnd7X_T83X4Gq9J-pnNOQSBWDGdWvcqT"
+    <img src="https://lh3.googleusercontent.com/d/1OcrK1bd2Nb-OBK7nEYB-OV8IR396hlUq"
          alt="Solution for Gaussian target function">
   </div>
 </div>
@@ -82,11 +82,11 @@ Notice that $U_{gauss}$ matches the target much better than $U_{step}$. Intuitiv
     <center><b>Heat plate settings for matching Gaussian</b></center>
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1KrKkycAJFtXcBnR6uAZDw-3e_6ReUnVJ"
+    <img src="https://lh3.googleusercontent.com/d/1Aq4-WCNyUXA_bVgAVeTj-s3HnsDj4AAu"
          alt="Heat plate settings for matching step function">
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1-iem3xU1MlnDsVF1OImgJ49v79bSehMG"
+    <img src="https://lh3.googleusercontent.com/d/1zU9ZEO1fzphxipGR8_In52LDzKJXb1Ae"
          alt="Heat plate settings for matching Gaussian">
   </div>
 </div>
@@ -103,47 +103,19 @@ While it does not contain much useful information, we can also plot the Lagrange
     <center><b>$\Lambda_{gauss}$</b></center>
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1SGM3UYai_fShVff40pjw8y3V7Bv-94mz"
+    <img src="https://lh3.googleusercontent.com/d/1K7T5th0VWdtXPmO7pNVZNQpZ8wbsFRlU"
          alt="Lagrange multiplier for step target function">
   </div>
   <div>
-    <img src="https://lh3.googleusercontent.com/d/1XiSPtr4vpuxI6PEaa7tOwpDqqo6mWeYV"
+    <img src="https://lh3.googleusercontent.com/d/1YCwYsVEAeWGdiX6ZnJtXP2bWhQopcMhC"
          alt="Lagrange multiplier for Gaussian target function">
   </div>
 </div>
 
-We can also plot the third scalar field, used for the nonlocal dofs, to see how we get these dofs
-
-<div class="twocolumn" style="width: 80%">
-  <div>
-    <center><b>$C_{step}$</b></center>
-  </div>
-  <div>
-    <center><b>$C_{gauss}$</b></center>
-  </div>
-  <div>
-    <img src="https://lh3.googleusercontent.com/d/1qkb1xS0pUZdYImQZa-Yr0Oh_sDfdRY7B"
-         alt="Plot of nonlocal dofs for step target function run">
-  </div>
-  <div>
-    <img src="https://lh3.googleusercontent.com/d/1VhTjzGxI5-IAuI_5UH8e_waQ0hrFGPwW"
-         alt="Plot of nonlocal dofs for Gaussian target function run">
-  </div>
-</div>
-
-Notice that since we are using DG_Q elements, it does not matter that the nonlocal dofs live on the boundary.
-
 <h3>Possibilities for extensions</h3>
 
-IDEAS:
+There are a few ways that this program could be extended, which we list below.
 
-- Control function which requires more than one dof
-- Adaptively refined mesh
-- Regex function (target and control), systematic determination of number of non-local dofs required
-- Coupled problem: isolated region with target heat profile, heat distribution on larger area
-- Method of manufactured solutions for target function: should be able to match perfectly
-- Quantify how good the match is
+1. As mentioned in the code documentation, this program does not make use of any preconditioners before solving. This is because, for a 2D problem, the code runs fast enough that optimization is not necessary. However, for larger problems, it would be good if the solver ran more quickly. See the "Possibilities for extensions" section of step-6 for a more detailed discussion on to change preconditioners. We should note that since the block matrix we use has many 0's on the diagonal, preconditioners like PreconditionJacobi will not work.
 
-TODO: Wolfgang, what should go here? I've listed above ways that I would extend this project, but I don't know how to do these things right now. Should the extensions section be this technical, or should it be small things someone could do to deepen understanding?
-
-TODO: How should I do images for this program? Do I need to upload them separately?
+2. To validate the optimization problem is working correctly, we could try to match a target function which is itself a solution to the Poisson equation with prescribed heat profile. If the optimization problem is being solved correctly, it should be able to perfectly match this solution. To create such a function, we would need to first solve the Poisson problem on a scalar field, with a RHS described by the chosen heat profile. See step-7 for more information on the method of manufactured solutions.

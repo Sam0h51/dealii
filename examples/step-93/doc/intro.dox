@@ -1,5 +1,6 @@
 <i>This program was contributed by Sam Scheuerman and Wolfgang
 Bangerth.</i>
+<br>
 
 <a name="step-93-Intro"></a>
 <h1>Introduction</h1>
@@ -55,8 +56,8 @@ To make this more compact, we phrase it as a Lagrangian
 @f}
 
 where $\lambda$ is a Lagrange multiplier and $(\cdot, \cdot)$ denotes an $L^2$ scalar
-product. We do this because finding a minimizer of $L$
-is equivalent to solving the original optimization problem, and we can find a minimizer
+product. We do this because finding a critical point of $L$
+is equivalent to solving the original optimization problem, and we can find a critical point
 of $L$ by finding roots of its derivatives. At this point, we have a choice: we can either
 derive the optimality conditions first, then discretize the problem (in the literature this
 is called the optimize then discretize approach), or we can first discretize $L$ and then
@@ -80,7 +81,13 @@ where
   f =& \sum_{k=0}^m C^k f_k.
 @f}
 
-Note the application of integration by parts above, which makes use of the Dirichlet boundary conditions to eliminate the boundary integral. Implicitly, we assume that each $f_k$ is something simple (in this example, each $f_k$ is a characteristic function and $m=4$). Then the Lagrangian becomes TODO: Should I put a picture of the $f_k$ functions here?
+Note the application of integration by parts above, which makes use of the Dirichlet boundary conditions to eliminate the boundary integral. Implicitly, we assume that each $f_k$ is something simple. In this example, each $f_k$ is a characteristic function and $m=4$. These functions look like
+
+<center><img src="https://lh3.googleusercontent.com/d/1vJlEYGSDh6c3o6Z69wj2wnvvXPT4Xg5a"
+         alt="Visualization of four characteristic functions together on the same plot"></center>
+
+
+Then the Lagrangian becomes
 
 @f{align*}{
   L_n =& \frac{1}{2}\sum_{i=0}^n\sum_{j=0}^n\left[ (U^i - \overline{U}^i)(U^j
@@ -91,23 +98,23 @@ Note the application of integration by parts above, which makes use of the Diric
 
 Note: at this point, we can clearly see where the nonlocal degrees of freedom are coming from. The term $\int_\Omega \varphi_i f_k$ is an integral which cannot a priori be confined to a single cell or small collection of cells, but rather must be evaluated on all cells that lie in the domain of $f$.
 
-To find a minimum, we take a partial derivative with respect to each $U^i$,
+To find a critical point, we take a partial derivative with respect to each $U^i$,
  $\Lambda^j$, and $C^k$. The derivatives have the following form:
 
 @f{align*}{
-  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
+  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
    - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]\\
   \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
   + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k\\
   \frac{\partial L}{\partial C^k} =& \sum_{j=0}^n \Lambda^j\int_{\Omega}\varphi_j f_k.
 @f}
 
-As with many other minimization problems, we can observe that for a minimum to occur,
+As with many other minimization problems, we can observe that for a critical point to occur,
 these derivatives must all be 0. This gives us $n + n + m$ linear equations to solve
 for the coefficient vectors $U$, $\Lambda$, and $C$:
 
 @f{align*}{
-  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[2(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
+  \frac{\partial L}{\partial U^i} =& \sum_{j=0}^n\left[(U^j - \overline{U}^j)\int_{\Omega}\phi_i\phi_j\right]
    - \sum_{j=0}^n\left[\Lambda^j\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right] = 0\\
   \frac{\partial L}{\partial \Lambda^j} =& -\sum_{i=0}^n\left[U^i\int_{\Omega}\nabla\varphi_i\cdot\nabla\varphi_j\right]
   + \sum_{k=0}^m C^k\int_{\Omega}\varphi_j f_k = 0\\
@@ -120,7 +127,7 @@ in such a form. Take $(\mathcal{M}_{i, j}) = \int_\Omega\varphi_i\varphi_j$, $(\
  f_k$, and note that $\mathcal{F}$ is an $n\times m$ matrix. Then we get the matrix system
 
  @f{align*}{
-  2\mathcal{M}U - 2\mathcal{M}\overline{U} - \mathcal{N}^T\Lambda  =& 0\\
+  \mathcal{M}U - \mathcal{M}\overline{U} - \mathcal{N}^T\Lambda  =& 0\\
   -\mathcal{N}U + \mathcal{F}^TC =& 0\\
   \mathcal{F}\Lambda =& 0.
  @f}
@@ -130,7 +137,7 @@ idealized system to solve:
 
 @f{align*}{
   \left(\begin{array}{c c c}
-  2\mathcal{M} & -\mathcal{N}^T & 0\\
+  \mathcal{M} & -\mathcal{N}^T & 0\\
   -\mathcal{N} & 0 & \mathcal{F}^T\\
   0 & \mathcal{F} & 0
   \end{array}\right)
@@ -138,7 +145,7 @@ idealized system to solve:
   U\\\Lambda\\ C
   \end{array}\right) =
   \left(\begin{array}{c}
-  2\mathcal{M}\overline{U}\\0\\0
+  \mathcal{M}\overline{U}\\0\\0
   \end{array}\right).
 @f}
 
@@ -178,13 +185,17 @@ degree of freedom in a DoFHandler and the corresponding row and column
 in a linear system. Here, perhaps one would make the choice that the
 mesh-based degrees of freedom (which the DoFHandler numbers from zero
 to $n+n-1$) come first, and the four $C_k$ additional scalar
-unknowns come last. (TODO: Rephrase maybe) The fact that we need to spell out such a
-convention -- which in most codes would be entirely implicit, rather
-than enforced through explicit means -- should give you a first hint
-that something with this kind of design is wrong. For example, we can
-not renumber all degrees of freedom with the functions in
-DoFRenumbering in arbitrary ways if we want the $m$ additional
-variables always at the end.
+unknowns come last. However, the fact that we need to spell out such
+a convention should give you a hint that something with this kind of
+design is wrong. Most codes which would use a convention like this
+will, almost certainly, leave this convention implicit (something
+for the programer to know about) rather than enforcing it
+explicitly. It is then very easy for a number of bugs to emerge.
+For example, we can not renumber all degrees of freedom with the
+functions in DoFRenumbering in arbitrary ways if we want the $m$
+additional variables always at the end.
+
+TODO: Read through above again, make sure it reads well.
 
 Precisely because it is so easy to make mistakes and because it is so
 restricting to have implicit conventions like "Yes, your matrix can be
