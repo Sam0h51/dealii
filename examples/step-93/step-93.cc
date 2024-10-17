@@ -247,7 +247,7 @@ namespace Step93
     // results.
     std::vector<CircularIndicatorFunction<dim>> heat_functions;
 
-    // Finally, target_funciton is a constant variable which stores the
+    // Finally, target_function is a constant variable which stores the
     // TargetFunction object used to construct the system rhs in
     // assemble_system(), and for output in output_results().
     const TargetFunction<dim> target_function;
