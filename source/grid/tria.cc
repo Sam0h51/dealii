@@ -3539,11 +3539,16 @@ namespace internal
                         s += std::to_string(v) + ',';
                       return s;
                     }() +
-                    " which are located at positions " +
+                    " which are located at coordinates " +
                     [vertex_locations, subcell_object]() {
                       std::ostringstream s;
-                      for (const auto v : subcell_object->vertices)
-                        s << '(' << vertex_locations[v] << ')';
+                      for (unsigned int i = 0;
+                           i < subcell_object->vertices.size();
+                           ++i)
+                        s << '('
+                          << vertex_locations[subcell_object->vertices[i]]
+                          << (i != subcell_object->vertices.size() - 1 ? "), " :
+                                                                         ")");
                       return s.str();
                     }() +
                     "."));
@@ -7788,8 +7793,8 @@ namespace internal
 
                         if (old_child[0]->index() + 1 != old_child[1]->index())
                           {
-                            // this is exactly the ugly case we taked
-                            // about. so, no coimplaining, lets get
+                            // this is exactly the ugly case we talked
+                            // about. so, no complaining, lets get
                             // two new lines and copy all info
                             typename Triangulation<dim,
                                                    spacedim>::raw_line_iterator
@@ -12022,7 +12027,7 @@ template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 Triangulation<dim, spacedim>::Triangulation(
   Triangulation<dim, spacedim> &&tria) noexcept
-  : Subscriptor(std::move(tria))
+  : EnableObserverPointer(std::move(tria))
   , smooth_grid(tria.smooth_grid)
   , reference_cells(std::move(tria.reference_cells))
   , periodic_face_pairs_level_0(std::move(tria.periodic_face_pairs_level_0))
@@ -12050,7 +12055,7 @@ DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 Triangulation<dim, spacedim> &Triangulation<dim, spacedim>::operator=(
   Triangulation<dim, spacedim> &&tria) noexcept
 {
-  Subscriptor::operator=(std::move(tria));
+  EnableObserverPointer::operator=(std::move(tria));
 
   smooth_grid                  = tria.smooth_grid;
   reference_cells              = std::move(tria.reference_cells);

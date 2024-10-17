@@ -77,7 +77,7 @@ DEAL_II_NAMESPACE_OPEN
 
 template <int dim, typename Number, typename VectorizedArrayType>
 MatrixFree<dim, Number, VectorizedArrayType>::MatrixFree()
-  : Subscriptor()
+  : EnableObserverPointer()
   , indices_are_initialized(false)
   , mapping_is_initialized(false)
   , mg_level(numbers::invalid_unsigned_int)
@@ -88,7 +88,7 @@ MatrixFree<dim, Number, VectorizedArrayType>::MatrixFree()
 template <int dim, typename Number, typename VectorizedArrayType>
 MatrixFree<dim, Number, VectorizedArrayType>::MatrixFree(
   const MatrixFree<dim, Number, VectorizedArrayType> &other)
-  : Subscriptor()
+  : EnableObserverPointer()
 {
   copy_from(other);
 }
@@ -146,12 +146,12 @@ MatrixFree<dim, Number, VectorizedArrayType>::create_cell_subrange_hp_by_index(
 
 namespace
 {
-  class FaceRangeCompartor
+  class FaceRangeComparator
   {
   public:
-    FaceRangeCompartor(const std::vector<unsigned int> &fe_indices,
-                       const bool                       include,
-                       const bool                       only_face_type)
+    FaceRangeComparator(const std::vector<unsigned int> &fe_indices,
+                        const bool                       include,
+                        const bool                       only_face_type)
       : fe_indices(fe_indices)
       , include(include)
       , only_face_type(only_face_type)
@@ -639,7 +639,7 @@ MatrixFree<dim, Number, VectorizedArrayType>::internal_reinit(
                     face_info.faces.begin() + range.second,
                     std::array<unsigned int, 3>{
                       {face_type, fe_index_interior, fe_index_exterior}},
-                    FaceRangeCompartor(fe_indices, false, only_face_type)) -
+                    FaceRangeComparator(fe_indices, false, only_face_type)) -
                   face_info.faces.begin();
                 return_range.second =
                   std::lower_bound(
@@ -647,7 +647,7 @@ MatrixFree<dim, Number, VectorizedArrayType>::internal_reinit(
                     face_info.faces.begin() + range.second,
                     std::array<unsigned int, 3>{
                       {face_type, fe_index_interior, fe_index_exterior}},
-                    FaceRangeCompartor(fe_indices, true, only_face_type)) -
+                    FaceRangeComparator(fe_indices, true, only_face_type)) -
                   face_info.faces.begin();
                 Assert(return_range.first >= range.first &&
                          return_range.second <= range.second,
@@ -739,14 +739,14 @@ MatrixFree<dim, Number, VectorizedArrayType>::internal_reinit(
                     face_info.faces.begin() + range.first,
                     face_info.faces.begin() + range.second,
                     std::array<unsigned int, 2>{{face_type, fe_index}},
-                    FaceRangeCompartor(fe_indices, false, only_face_type)) -
+                    FaceRangeComparator(fe_indices, false, only_face_type)) -
                   face_info.faces.begin();
                 return_range.second =
                   std::lower_bound(
                     face_info.faces.begin() + return_range.first,
                     face_info.faces.begin() + range.second,
                     std::array<unsigned int, 2>{{face_type, fe_index}},
-                    FaceRangeCompartor(fe_indices, true, only_face_type)) -
+                    FaceRangeComparator(fe_indices, true, only_face_type)) -
                   face_info.faces.begin();
                 Assert(return_range.first >= range.first &&
                          return_range.second <= range.second,
@@ -817,7 +817,7 @@ MatrixFree<dim, Number, VectorizedArrayType>::internal_reinit(
         }
 
       // Will the piola transform be used? If so we need to update
-      // the jacobian gradients in case of update_gradients on general cells.
+      // the Jacobian gradients in case of update_gradients on general cells.
       bool piola_transform = false;
       for (unsigned int no = 0, c = 0; no < dof_handler.size(); ++no)
         for (unsigned int b = 0;
@@ -2028,7 +2028,8 @@ MatrixFree<dim, Number, VectorizedArrayType>::initialize_indices(
            task_info.refinement_edge_face_partition_data[0]));
 
       for (auto &di : dof_info)
-        di.compute_face_index_compression(face_info.faces);
+        di.compute_face_index_compression(
+          face_info.faces, additional_data.hold_all_faces_to_owned_cells);
 
       // build the inverse map back from the faces array to
       // cell_and_face_to_plain_faces
