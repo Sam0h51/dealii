@@ -667,7 +667,7 @@ namespace Step93
     std::cout << "Beginning solve" << std::endl;
     Timer timer;
 
-    SolverControl solver_control(5000000, 1e-6 * system_rhs.l2_norm());
+    SolverControl solver_control(5'000'000, 1e-6 * system_rhs.l2_norm());
     SolverMinRes<Vector<double>> solver(solver_control);
 
     solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
@@ -681,6 +681,8 @@ namespace Step93
     // Finally, we stop the timer and output to the console.
     timer.stop();
     std::cout << "Wall time: " << timer.wall_time() << "s" << std::endl;
+    std::cout << "Solved in " << solver_control.last_step()
+              << " MINRES iterations." << std::endl;
   }
 
   // The output_results() function is a bit more robust for this program than
@@ -789,25 +791,55 @@ namespace Step93
 
 int main()
 {
-  dealii::deallog.depth_console(2);
+  try
+    {
+      using namespace dealii;
 
-  // In main(), we create integer which stores the dimension for the problem. We
-  // use this in the loop below and in instantiating the Step93 object, so it
-  // gets stored in a variable
-  const unsigned int dim = 2;
+      // In main(), we create integer which stores the dimension for the
+      // problem. We use this in the loop below and in instantiating the Step93
+      // object, so it gets stored in a variable
+      const unsigned int dim = 2;
 
-  // We also use the following small piece of code to construct a center for the
-  // target function dependent on the dimension of the problem. The center point
-  // for the target function will be (0.5), (0.5, 0.5), (0.5, 0.5, 0.5), etc.
-  dealii::Tensor<1, dim, double> center_setter;
-  for (unsigned int i = 0; i < dim; ++i)
-    center_setter[i] = 0.5;
+      // We also use the following small piece of code to construct a center for
+      // the target function dependent on the dimension of the problem. The
+      // center point for the target function will be (0.5), (0.5, 0.5), (0.5,
+      // 0.5, 0.5), etc.
+      Tensor<1, dim, double> center_setter;
+      for (unsigned int i = 0; i < dim; ++i)
+        center_setter[i] = 0.5;
 
-  const dealii::Point<dim> center(center_setter);
+      const Point<dim> center(center_setter);
 
-  // Finally, we pass the center to the Step93 object and run the program.
-  Step93::Step93<dim> heat_optimization_problem(center);
-  heat_optimization_problem.run();
+      // Finally, we pass the center to the Step93 object and run the program.
+      Step93::Step93<dim> heat_optimization_problem(center);
+      heat_optimization_problem.run();
+    }
+  catch (std::exception &exc)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Exception on processing: " << std::endl
+                << exc.what() << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+
+      return 1;
+    }
+  catch (...)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Unknown exception!" << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      return 1;
+    }
 
   return 0;
 }
