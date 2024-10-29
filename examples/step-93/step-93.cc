@@ -1,23 +1,22 @@
-/* ---------------------------------------------------------------------
+/* ------------------------------------------------------------------------
  *
- * Copyright (C) 1999 - 2024 by the deal.II authors
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ * Copyright (C) 2024 by the deal.II authors
  *
  * This file is part of the deal.II library.
  *
- * The deal.II library is free software; you can use it, redistribute
- * it, and/or modify it under the terms of the GNU Lesser General
- * Public License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * The full text of the license can be found in the file LICENSE.md at
- * the top level directory of deal.II.
+ * Part of the source code is dual licensed under Apache-2.0 WITH
+ * LLVM-exception OR LGPL-2.1-or-later. Detailed license information
+ * governing the source code and code contributions can be found in
+ * LICENSE.md and CONTRIBUTING.md at the top level directory of deal.II.
  *
- * ---------------------------------------------------------------------
-
+ * ------------------------------------------------------------------------
  *
- * Authors: Sam Scheuerman, 2024
+ * Authors : Sam Scheuerman, Wolfgang Bangerth, Colorado State University, 2024.
  */
 
 
+// @sect3{Include files and other top matter}
 
 #include <deal.II/grid/tria.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -62,67 +61,66 @@ namespace Step93
 {
   using namespace dealii;
 
-  // We start by defining a function class for u-bar; it represents the heat
+
+  // @sect3{Target and indicator functions}
+
+  // TODO: You talk about a Gaussian, but you're not actually defining this
+  // part. Let's just keep it simple and remove all references to the Gaussian.
+
+  // We start by defining a function class for $\bar u$; it represents the heat
   // profile we want to match. There is code available for either a circular
   // step function or a Gaussian.
   //
   // This class has two member variables:
   //
-  //   - center: a Point object representing the center of the function
-  //   - radius: a double representing the radius of the circular step, or the
+  //   - `center`: A Point object representing the center of the function
+  //   - `radius`: A double representing the radius of the circular step, or the
   //   standard deviation of the Gaussian
   template <int dim>
   class TargetFunction : public Function<dim>
   {
   public:
-    // Below is the default constructor for TargetFunction
-    TargetFunction(const unsigned int n_components = 1)
-      : Function<dim>(n_components)
-      , center(Point<dim>(0))
-      , radius(.1){};
+    TargetFunction()
+      : Function<dim>(1)
+      , center()
+      , radius(0.1)
+    {}
+
     // Next, we define an overloaded constructor for TargetFunction, so we can
     // choose to set the center and radius
     //
     // Parameters:
     //
-    //   - center: a constant Point pointer used to set the member variable
+    //   - `center`: A constant Point pointer used to set the member variable
     //   center
-    //   - radius: a constant double used to set the member variable radius
+    //   - `radius`: A constant double used to set the member variable radius
     TargetFunction(const unsigned int n_components,
                    const Point<dim>  &center,
                    const double       radius = .3)
       : Function<dim>(n_components)
       , center(center)
-      , radius(radius){};
+      , radius(radius)
+    {}
 
-    // The value() function returns the value of the target function at point p.
-    // Note that this value depends on which component the function is being
-    // evaluated on.
     virtual double value(const Point<dim>  &p,
                          const unsigned int component = 0) const override;
 
   private:
-    // See above
     const Point<dim> center;
     const double     radius;
   };
 
-  // The value() function returns the value of the function at point p and
-  // component index 'component'. In this case, if the component corresponds to
-  // the solution u, then the function returns a value based on either a step
-  // function or a Gaussian. If the component corresponds to l or c, the
-  // function always returns 0.
+  // The value() function returns the value of the function at point $p$ and
+  // component index `component`. In this case, if the component corresponds to
+  // the solution $u$, then the function returns a value based on either a step
+  // function or a Gaussian. If the component corresponds to any of the other
+  // variables, the function always returns 0.
   template <int dim>
   double TargetFunction<dim>::value(const Point<dim>  &p,
                                     const unsigned int component) const
   {
     if (component == 0)
       {
-        // First we have code for a Gaussian target function
-        /* return
-         * std::exp(-((p-center).norm()*(p-center).norm())/(radius*radius)); */
-
-        // Then we have code for a step target function
         if ((p - center).norm() <= radius)
           return 1;
         else
@@ -139,9 +137,9 @@ namespace Step93
   //
   //  Parameters:
   //
-  //   - center: a constant Point object giving the center of the indicator
-  //   region
-  //   - radius: the radius of the region
+  //   - `center`: A constant Point object giving the center of the indicator
+  //   region.
+  //   - `radius`: The radius of the region.
   template <int dim>
   class CircularIndicatorFunction : public Function<dim>
   {
@@ -149,18 +147,16 @@ namespace Step93
     CircularIndicatorFunction()
     {}
 
-    // Once again, we have an overloaded constructor that allows the center and
-    // radius to be set at initialization.
     CircularIndicatorFunction(const Point<dim> &center, const double radius);
 
-    virtual double
-    value(const Point<dim>                   &p,
-          [[maybe_unused]] const unsigned int component = 0) const override;
+    virtual double value(const Point<dim>  &p,
+                         const unsigned int component = 0) const override;
 
   private:
     const Point<dim> center;
     const double     radius;
   };
+
 
   template <int dim>
   CircularIndicatorFunction<dim>::CircularIndicatorFunction(
@@ -172,8 +168,8 @@ namespace Step93
 
   template <int dim>
   double CircularIndicatorFunction<dim>::value(
-    const Point<dim>                   &p,
-    [[maybe_unused]] const unsigned int component) const
+    const Point<dim> &p,
+    const unsigned int /* component */) const
   {
     if ((center - p).norm() <= radius)
       return 1;
@@ -181,35 +177,43 @@ namespace Step93
       return 0;
   }
 
-  // The main class is very similar to step-4. However, there are four new
-  // member variables:
+
+  // @sect3{The principal class}
+
+  // The main class is very similar to step-4 in structure, given that this is
+  // a relatively simple program that does not use adaptive mesh refinement.
+  // However, there are four new member variables:
   //
-  //   nonlocal_dofs:    this is a std::vector of dof indices that stores the
+  //   - `nonlocal_dofs`: A `std::vector` of dof indices that stores the
   //   dof index for the nonlocal dofs.
   //
-  //   heat_centers:     this is a std::vector of Point objects, used to set the
-  //   center of the CircularIndicatorFunction objects used as heat sources
+  //   - `heat_centers`: A `std::vector` of Point objects, used to set the
+  //   center of the `CircularIndicatorFunction` objects used as heat sources
   //   in this program.
   //
-  //   heat_functions:   a std::vector of CircularIndicatorFunction objects;
+  //   - `heat_functions`: A `std::vector` of CircularIndicatorFunction objects;
   //   these are the heat sources.
   //
-  //   target_function:  this is the function we want to match. We store it as a
-  //   class variable because it is used both in assemble_system() and
+  //   - `target_function`: This is the function we want to match. We store it
+  //   as a class variable because it is used both in assemble_system() and
   //   output_results().
   template <int dim>
   class Step93
   {
   public:
+    // TODO If you don't need this constructor, let's remove it.
     Step93();
 
-    // For the main class, we also define an overloaded constructor that allows
-    // us to set the center of the target function at instantiation
+    // TODO: Just make this the default constructor and set the center *in* the
+    // constructor. Instead of changing main(), someone interested in playing
+    // might as well change the set-up in the constructor.
     Step93(const Point<dim> &target_center);
+
+    // TODO: step-4 does not actually have a user-defined destructor (any more).
+    // I don't think you need it here either -- just remove.
     ~Step93();
 
     void run();
-
 
   private:
     void make_grid();
@@ -232,26 +236,35 @@ namespace Step93
     Vector<double> solution;
     Vector<double> system_rhs;
 
-    // The vector below stores the indices of the FE_DGQ elements which serve as
-    // the nonlocal dofs
+    // The following four member variables are all new, compared to
+    // step-4. As already mentioned above, they have the following meaning:
+    //
+    // - `nonlocal_dofs` is a vector that stores the indices of the
+    //   FE_DGQ elements assigned to the first few cells which serve as
+    //   the nonlocal dofs.
+    // - `heat_centers` stores the centers of the heating pads we use
+    //   as right hand sides for the Poisson equation, and `heat_functions`
+    //   then stores the corresponding function ojbects.
+    // - `target_function` is a constant variable which stores the
+    //   TargetFunction object used to construct the system rhs in
+    //   assemble_system(), and for output in output_results().
+    //   It corresponds to $\bar u$.
     std::vector<types::global_dof_index> nonlocal_dofs;
 
-    // A second vector of Points stores the centers of the non-local
-    // dofs. A circular step function centered at each point will be
-    // interpolated later in the program. Since each step function is wider than
-    // a single cell, we must have non-local dofs to capture this behavior.
+    // TODO: I don't think you actually ever use this variable. If so, remove it
+    // and the mentions of it above.
     std::vector<Point<dim>> heat_centers;
 
-    // Then we have a third vector of CircularIndicatorFunction<dim> objects,
-    // which are used for assembling the system and again when outputting the
-    // results.
     std::vector<CircularIndicatorFunction<dim>> heat_functions;
 
-    // Finally, target_function is a constant variable which stores the
-    // TargetFunction object used to construct the system rhs in
-    // assemble_system(), and for output in output_results().
     const TargetFunction<dim> target_function;
   };
+
+
+  // @sect4{The Step93 constructor}
+
+  // TODO: As mentioned above, just remove if you don't actually use this
+  // constructor.
 
   // The default constructor below has several functions: it initializes
   // dof_handler and target_function, it constructs the hp finite element
@@ -265,8 +278,8 @@ namespace Step93
   {
     // Here, we generate the finite element collection, which is basically a
     // list of all the possible finite elements we could use on each cell. This
-    // collection has two elements: one FE_System that has two degree 2 FE_Q
-    // elements and one FE_Nothing element, and one FE_System that has two
+    // collection has two elements: one FESystem that has two degree 2 FE_Q
+    // elements and one FE_Nothing element, and one FESystem that has two
     // degree 2 FE_Q elements and one degree 0 FE_DGQ element.
     fe_collection.push_back(
       FESystem<dim>(FE_Q<dim>(2), 2, FE_Nothing<dim>(), 1));
@@ -313,32 +326,47 @@ namespace Step93
       }
   }
 
-  // The overloaded constructor below is the same as above, but with a parameter
-  // for the center of the target function.
+  // In this constructor, we set up several of the fundamental data
+  // structures this program needs. Specifically, we generate the
+  // finite element collection, which is basically a list of all the
+  // possible finite elements we could use on each cell. This
+  // collection has two elements: one FESystem that has two degree 2
+  // FE_Q elements and one FE_Nothing element (to be used on all cells
+  // that are not "special"), and one FESystem that has two degree 2
+  // FE_Q elements and one degree 0 FE_DGQ element (to be used on
+  // those "special" cells we use to anchor the non-local degrees of
+  // freedom, as discussed in the introduction).
+  //
+  // Where we have a collection of elements, we then also need a
+  // collection of quadratures -- which here has only a single element
+  // because we can use the same quadrature on all cells.
   template <int dim>
   Step93<dim>::Step93(const Point<dim> &target_center)
     : dof_handler(triangulation)
     , target_function(3, target_center)
   {
-    // Here, we generate the finite element collection, which is basically a
-    // list of all the possible finite elements we could use on each cell. This
-    // collection has two elements: one FE_System that has two degree 2 FE_Q
-    // elements and one FE_Nothing element, and one FE_System that has two
-    // degree 2 FE_Q elements and one degree 0 FE_DGQ element.
-    fe_collection.push_back(
-      FESystem<dim>(FE_Q<dim>(2), 2, FE_Nothing<dim>(), 1));
-    fe_collection.push_back(FESystem<dim>(FE_Q<dim>(2), 2, FE_DGQ<dim>(0), 1));
+    fe_collection.push_back(             // the element for 'regular' cells:
+      FESystem<dim>(FE_Q<dim>(2)         // for 'u'
+                    FE_Q<dim>(2),        // for 'lambda'
+                    FE_Nothing<dim>())); // nothing for for 'c'
+    fe_collection.push_back(             // the element for 'special' cells:
+      FESystem<dim>(FE_Q<dim>(2),        // for 'u'
+                    FE_Q<dim>(2),        // for 'lambda'
+                    FE_DGQ<dim>(0)));    // for 'c'
 
-    // The quadrature collection is just on degree 3 QGauss element.
     quadrature_collection.push_back(QGauss<dim>(3));
 
-    // Here, we create the vector of center points by enumerating the
+    // Next, we create the vector of center points by enumerating the
     // vertices of a lattice, in this case the corners of a hypercube
     // centered at 0, with side length 1.
-    double                           coordinate_points[2] = {.5, -.5};
+    const double                     coordinate_points[2] = {.5, -.5};
     std::vector<std::vector<double>> center_points;
 
-    for (int i = 0; i < std::pow(2, dim); ++i)
+    // TODO: This is really difficult to read, with all of the integer
+    // index shifting. I think it would be easier to read if you just
+    // did a switch(dim) case 2: ... case 3: where you just spell out
+    // the 4 or 8 points explicitly.
+    for (int i = 0; i < Utilities::fixed_power<dim>(2); ++i)
       {
         // Initialize a 1 x dim tensor to store the coordinates of the point
         Tensor<1, dim, double> temp_point;
@@ -368,6 +396,7 @@ namespace Step93
       }
   }
 
+
   // The destructor below is the standard destructor
   template <int dim>
   Step93<dim>::~Step93()
@@ -375,7 +404,10 @@ namespace Step93
     dof_handler.clear();
   }
 
-  // The make_grid() function makes a hypercube grid, see step-4
+
+  // @sect4{Step93::make_grid()}
+
+  // The make_grid() function makes a hypercube grid, see step-4:
   template <int dim>
   void Step93<dim>::make_grid()
   {
@@ -386,19 +418,23 @@ namespace Step93
               << std::endl;
   }
 
-  // The setup_system() function is similar to step-4, except we have to add a
-  // few steps to prepare for the nonlocal dofs
+
+  // @sect4{Step93::setup_system()}
+
+  // The `setup_system()` function is similar to step-4, except we have to add a
+  // few steps to prepare for the nonlocal dofs.
   template <int dim>
   void Step93<dim>::setup_system()
   {
-    // To start, we create an unsigned int variable to count how many non-local
-    // dofs have been assigned
+    // To start, we create an unsigned int variable to count how many
+    // non-local dofs have been assigned.  Then, we loop over the
+    // cells and set the FESystem index to 1, which corresponds to the
+    // system with 2 FE_Q elements and one FE_DGQ element. We do this
+    // until we have enough dofs for each heat function.  Then, we
+    // call DoFHandler::distribute_dofs() to actually enumerate all
+    // degrees of freedom.
     unsigned int number_of_c_active_cells = 0;
 
-    // Then, we loop over the cells and set the FE_System index
-    // to 1, which corresponds to the system with 2 FE_Q elements and one FE_DGQ
-    // element. We do this until we have enough dofs for each heat function.
-    // Then, we call distribute_dofs.
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
         cell->set_active_fe_index(1);
@@ -408,19 +444,65 @@ namespace Step93
       }
     dof_handler.distribute_dofs(fe_collection);
 
-    // Once we've assigned dofs, the code block below counts the number of dofs
-    // in the system, and outputs to the console
+    // Once we've assigned dofs, the code block below counts the
+    // number of dofs in the system, and outputs to the console. In
+    // other contexts, we might want to use *block* matrices (see, for
+    // example, step-20 or step-22) to build more efficient linear
+    // solvers; here, we will just put everything into one big matrix
+    // and so knowing the number of unknowns for each of the variables
+    // is purely for informational purposes.
     const std::vector<types::global_dof_index> dofs_per_component =
       DoFTools::count_dofs_per_fe_component(dof_handler);
-    const unsigned int dofs_per_u = dofs_per_component[0],
-                       dofs_per_l = dofs_per_component[1],
-                       dofs_per_c = dofs_per_component[2];
-    std::cout << "Number of degrees of freedom: " << dofs_per_u << "+"
-              << dofs_per_l << "+" << dofs_per_l << " = "
-              << dofs_per_u + dofs_per_l + dofs_per_c << std::endl;
+    const unsigned int n_dofs_u = dofs_per_component[0],
+                       n_dofs_l = dofs_per_component[1],
+                       n_dofs_c = dofs_per_component[2];
+    std::cout << "Number of degrees of freedom: " << n_dofs_u << "+" << n_dofs_l
+              << "+" << n_dofs_l << " = " << n_dofs_u + n_dofs_l + n_dofs_c
+              << std::endl;
 
-    // Here we make the hanging node constraints
-    // TODO: Do I have these?
+    // Finally, we need to extract the indices of the finite elements which
+    // correspond to the non-local dofs.
+    //
+    // First, we make a component mask, which is `false` except for
+    // the third component. This will extract only the dofs from the
+    // third component of the FE system. Next, we actually extract the
+    // dofs, and store them in an IndexSet variable.  Finally, we add
+    // each extracted index to the member array `nonlocal_dofs`.
+    //
+    // (One could presumably have written the rest of the program in a
+    // way that it directly works on the IndexSet rather than copying
+    // its elements into a `std::vector`. On the other hand, using a
+    // vector turns out to be more convenient in many places below
+    // because its elements can easily be indexed, whereas a set is
+    // typically considered an unordered collection that can be
+    // iterated over, but is not conveniently indexed.)
+    const ComponentMask component_mask_c({false, false, true});
+    const IndexSet      indices_c =
+      DoFTools::extract_dofs(dof_handler, component_mask_c);
+
+    for (const types::global_dof_index non_local_index : indices_c)
+      nonlocal_dofs.push_back(non_local_index);
+
+    std::cout << "Number of nonlocal dofs: " << nonlocal_dofs.size()
+              << std::endl;
+
+
+    // The mesh we created above is not locally refined, and so there
+    // are no hanging node constraints to keep track of. But it does
+    // not hurt to just use the same setup we have used starting in
+    // step-6 of building a constraints object that contains hanging
+    // node constraints (anticipating that perhaps we'd want to do
+    // adaptive mesh refinement in a later step) into which we then
+    // also put the constraints for boundary values on both the $u$
+    // and $\lambda$ variables.
+    //
+    // Because the nonlocal degrees of freedom use discontinuous
+    // elements, they do not contribute to boundary values
+    // (discontinuous elements do not have degrees of freedom
+    // logically located on the boundary that could be interpolated)
+    // and we do not need to exclude these solution components
+    // explicitly when calling
+    // VectorTools::interpolate_boundary_values()
     constraints.clear();
     DoFTools::make_hanging_node_constraints(dof_handler, constraints);
     VectorTools::interpolate_boundary_values(dof_handler,
@@ -429,54 +511,60 @@ namespace Step93
                                              constraints);
     constraints.close();
 
-    // Here we make the base sparsity pattern before we add entries
+    // The remainder of the function deals with building the sparsity
+    // pattern. It consists of two parts: The entries that result from
+    // the usual integration of products of shape functions, and then
+    // the entries that result from integrals that contain nonlocal
+    // degrees of freedom (which one can think of as associated with
+    // shape functions that are constant across the entire
+    // domain). The first part is easily built using standard tools:
     DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
     DoFTools::make_sparsity_pattern(dof_handler, dsp, constraints, false);
 
-    // Next, we create a dummy hp_fe_values that only updates the quadrature
-    // points and values. We use this for the set_nonnegative_c function, and to
-    // determine where to increase the sparse matrix.
+    // The other part is more awkward. We have matrix entries that
+    // result from terms such as $\int_{\Omega}\varphi_j f_k$ where
+    // $\varphi_j$ is a $\lambda$-shape function and $f_k$ are
+    // characteristic functions of parts of the domain. As a
+    // consequence, we end up with a nonzero matrix entry $A_{jk}$
+    // (along with its transpose $A_{kj}$) if there is overlap between
+    // $\varphi_j$ and $f_k$. In practice, because we will use
+    // quadrature, this means that we end up with a quadrature point
+    // on a cell on which $\varphi_j$ lives and at which $f_k$ is not
+    // zero. (We will implicitly assume that a shape function that
+    // lives on the current cell is nonzero at all quadrature points
+    // -- an assumption that is generally true unless one chooses
+    // specific quadrature formulas.) Determining which sparsity
+    // pattern entries we need to add then essentially comes down to
+    // "simulating" what would happen if we actually computed
+    // integrals and which matrix entries would end up being non-zero
+    // in the process. As a consequence, the following code's general
+    // structure looks very similar to what we will do for the
+    // nonlocal contributions in the `assemble_system()` function
+    // below.
+    //
+    // To get this started, we create a dummy `hp_fe_values` that we
+    // will only use to query the quadrature point locations.  The
+    // non-local dofs will need to interact with the second component
+    // of the fe system (namely, $\lambda$), so we also declare a
+    // variable that will help us extract this scalar field for use
+    // below.
     hp::FEValues<dim> hp_fe_values(fe_collection,
                                    quadrature_collection,
-                                   update_quadrature_points | update_values);
+                                   update_quadrature_points);
 
-    // Now, we need to extract the indices of the finite elements which
-    // correspond to the non-local dofs.
-
-    // First, we make a component mask, which is false except for the third
-    // component. This will extract only the dofs from the third component of
-    // the FE system.
-    const ComponentMask component_mask({false, false, true});
-
-    // Next, we actually extract the dofs, and store them in an index set.
-    const IndexSet non_zero_c =
-      DoFTools::extract_dofs(dof_handler, component_mask);
-
-    // Finally, we add each extracted index to the member array nonlocal_dofs
-    for (auto non_local_index : non_zero_c)
-      {
-        nonlocal_dofs.push_back(non_local_index);
-      }
-    std::cout << "Number of nonlocal dofs: " << nonlocal_dofs.size()
-              << std::endl;
-
-
-    std::vector<types::global_dof_index> local_dof_indices;
-
-    // The non-local dofs will need to interact with the second component of
-    // the fe system, so we extract this scalar field to use below.
-    const FEValuesExtractors::Scalar l(1);
+    const FEValuesExtractors::Scalar lambda(1);
 
     // Then, we loop over the cells, then over the quadrature points, and
     // finally over the indices, as if we were constructing a mass matrix.
-    // However, what we instead do here is check 2 things. First, we check if
+    // However, what we instead do here is check two things. First, we check if
     // the quadrature point is within the radius of a circular indicator
-    // function that represents my non-local dof. Then, we check if the l
-    // component of my fe system is non-zero at this quadrature point. If both
-    // of these are true, then we add an entry to the sparse matrix at the
-    // (nonlocal dof index, l dof index) entry and the (l dof index, nonlocal
-    // dof index) entry (because the block system we solve has both the
-    // l-nonlocal interacting block and its transpose).
+    // function that represents my non-local dof. If so
+    // then we add an entry to the sparse matrix at the
+    // (nonlocal dof index, lambda dof index) entry and the (lambda dof index,
+    // nonlocal dof index) entry for all lambda degrees of freedom. (Because the
+    // matrix we solve with has both the lambda-nonlocal interacting block and
+    // its transpose, we need to add two entries each time.)
+    std::vector<types::global_dof_index> local_dof_indices;
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
         hp_fe_values.reinit(cell);
@@ -484,34 +572,26 @@ namespace Step93
         const FEValues<dim> &fe_values = hp_fe_values.get_present_fe_values();
 
         local_dof_indices.resize(fe_values.dofs_per_cell);
-
         cell->get_dof_indices(local_dof_indices);
 
         for (const unsigned int q_index : fe_values.quadrature_point_indices())
           {
+            const Point<dim> q_point = fe_values.quadrature_point(q_index);
             for (const unsigned int i : fe_values.dof_indices())
-              {
-                const double phi_i_l = fe_values[l].value(i, q_index);
-
-                const Point<dim> q_point = fe_values.quadrature_point(q_index);
-
-                for (unsigned int j = 0; j < heat_functions.size(); ++j)
-                  {
-                    // Within the loop, we need the code below to check if
-                    // q_point is within the desired radius of the heat_center,
-                    // and if phi_i_l is not zero at this quadrature point. If
-                    // so, we add the requisite entries to the sparsity pattern.
-                    if (heat_functions[j].value(q_point) > 1e-2 && phi_i_l != 0)
+              if (fe.system_to_component_index(i).first ==
+                  1) // 'i' is a lambda shape function
+                {
+                  for (unsigned int j = 0; j < heat_functions.size(); ++j)
+                    if (heat_functions[j].value(q_point) != 0)
                       {
                         dsp.add(local_dof_indices[i], nonlocal_dofs[j]);
                         dsp.add(nonlocal_dofs[j], local_dof_indices[i]);
                       }
-                  }
-              }
+                }
           }
       }
 
-    // The rest (below) is standard setup code, see step-4
+    // The rest (below) is standard setup code, see step-4:
     sparsity_pattern.copy_from(dsp);
 
     system_matrix.reinit(sparsity_pattern);
@@ -520,31 +600,45 @@ namespace Step93
     system_rhs.reinit(dof_handler.n_dofs());
   }
 
-  // The assemble_system() function works very similar to how is does in other
-  // tutorial programs (cf. step-4, step-6, step-8).
-  // However, there is an additional component to constructing the
-  // system matrix, because we need to handle the nonlocal dofs
-  // manually.
+
+  // @sect4{Step93::assemble_system()}
+
+  // The `assemble_system()` function works very similar to how is
+  // does in other tutorial programs (cf. step-4, step-6, step-8, and
+  // for the vector-valued case see step-22).  However, there is an
+  // additional component to constructing the system matrix, because
+  // we need to handle the nonlocal dofs manually.
+  //
+  // TODO: I think it would be easier to understand if you treated
+  // u-bar as a function of x, rather than interpolating it onto the
+  // mesh. You *can* do that, of course, but there is really no good
+  // reason to do so and we don't generally do this anywhere else
+  // either. If you look, for example, at step-4, we simply evaluate
+  // f(x) at the quadrature point rather than first interpolating it
+  // onto the mesh and then evaluating the interpolant at the
+  // quadrature point. I would suggest doing the same here.
+  //
+  // First, we create a vector that stores the coefficients of $\bar u$ in
+  // the finite element basis. We use this vector to construct the rhs
+  // component associated to the u derivatives of the Lagrangian.
+  // Notice that we instantiate the vector and interpolate the
+  // target function here, but this is NOT what goes in the RHS
+  // vector. We first have to multiply this vector by the mass
+  // matrix, which we do in the same loop that constructs the
+  // system matrix. Note also that the mass matrix is a block
+  // component of the system matrix.
   template <int dim>
   void Step93<dim>::assemble_system()
   {
+    Vector<double> rhs_coefficients(dof_handler.n_dofs());
+    VectorTools::interpolate(dof_handler, target_function, rhs_coefficients);
+
+    // Next, we do a standard loop setup for constructing the system matrix.
     hp::FEValues<dim> hp_fe_values(fe_collection,
                                    quadrature_collection,
                                    update_values | update_gradients |
                                      update_quadrature_points |
                                      update_JxW_values);
-
-    // First, we create a vector that stores the coefficients of u-bar in
-    // the finite element basis. We use this vector to construct the rhs
-    // component associated to the u derivatives of the Lagrangian.
-    // Notice that we instantiate the vector and interpolate the
-    // target function here, but this is NOT what goes in the RHS
-    // vector. We first have to multiply this vector by the mass
-    // matrix, which we do in the same loop that constructs the
-    // system matrix. Note also that the mass matrix is a block
-    // component of the system matrix.
-    Vector<double> rhs_coefficients(dof_handler.n_dofs());
-    VectorTools::interpolate(dof_handler, target_function, rhs_coefficients);
 
     FullMatrix<double> cell_matrix;
     Vector<double>     cell_rhs;
@@ -552,12 +646,9 @@ namespace Step93
     std::vector<types::global_dof_index> local_dof_indices;
 
     const FEValuesExtractors::Scalar u(0);
-    const FEValuesExtractors::Scalar l(1);
+    const FEValuesExtractors::Scalar lambda(1);
     const FEValuesExtractors::Scalar c(2);
 
-    // Next, we do a standard loop setup for constructing the system matrix.
-    // Note that we do this manually rather than using an existing
-    // function, because we must handle the nonlocal dofs manually.
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
         const unsigned int dofs_per_cell = cell->get_fe().n_dofs_per_cell();
@@ -576,19 +667,21 @@ namespace Step93
         cell->get_dof_indices(local_dof_indices);
 
 
-
+        // In the loop over quadrature points, we start by building
+        // all of the usual terms that are bilinear in shape functions
+        // corresponding to the $u$ and $\lambda$ variables:
         for (const unsigned int q_index : fe_values.quadrature_point_indices())
           {
             const double JxW = fe_values.JxW(q_index);
             for (const unsigned int i : fe_values.dof_indices())
               {
                 const double phi_i_u = fe_values[u].value(i, q_index),
-                             phi_i_l = fe_values[l].value(i, q_index);
+                             phi_i_l = fe_values[lambda].value(i, q_index);
 
                 const Tensor<1, dim> grad_i_u =
                                        fe_values[u].gradient(i, q_index),
                                      grad_i_l =
-                                       fe_values[l].gradient(i, q_index);
+                                       fe_values[lambda].gradient(i, q_index);
 
                 for (const unsigned int j : fe_values.dof_indices())
                   {
@@ -597,7 +690,8 @@ namespace Step93
                     const Tensor<1, dim> grad_j_u =
                                            fe_values[u].gradient(j, q_index),
                                          grad_j_l =
-                                           fe_values[l].gradient(j, q_index);
+                                           fe_values[lambda].gradient(j,
+                                                                      q_index);
 
                     cell_matrix(i, j) += phi_i_u * phi_j_u * JxW;
                     cell_matrix(i, j) += -grad_i_u * grad_j_l * JxW;
@@ -609,18 +703,21 @@ namespace Step93
                   }
 
 
-                // Here, we deal with the nonlocal dofs. We start be getting an
-                // actual quadrature point, rather than just an index.
+                // For the integrals that involve the nonlocal dofs,
+                // we start be getting an actual quadrature point,
+                // rather than just an index.  Then, we loop over the
+                // heat functions, adding the numeric integral of each
+                // heat equation with each l component finite element,
+                // at the appropriate indices (which we found in
+                // `setup_system()`). Note that if we try to add 0 to
+                // an matrix entry we have not previously said should
+                // be nonzero, there will not be a problem; but if we
+                // try to add a nonzero value to an entry not
+                // previously added to the sparsity pattern, we will
+                // get an error. In other words, the following lines
+                // of the code check that we adjusted the sparsity
+                // pattern correctly in the previous function.
                 const Point<dim> q_point = fe_values.quadrature_point(q_index);
-
-                // Next, we loop over the heat functions, adding the numeric
-                // integral of each heat equation with each l component finite
-                // element, at the appropriate indices (which we found in
-                // setup_system()). Note that if we try to add 0 to an
-                // uninitialized entry, there will not be a problem, but if we
-                // try to add a nonzero value to an uninitialized entry we will
-                // get an error. So, this part of the code checks that we
-                // adjusted the dsp correctly.
                 for (unsigned int j = 0; j < heat_functions.size(); ++j)
                   {
                     system_matrix.add(local_dof_indices[i],
@@ -635,10 +732,16 @@ namespace Step93
               }
           }
 
-        // Here we apply constraints
+        // Finally, we copy the local contributions to the linear
+        // system into the global matrix and right hand side vector,
+        // taking into account hanging node and boundary values
+        // constraints:
         constraints.distribute_local_to_global(
           cell_matrix, cell_rhs, local_dof_indices, system_matrix, system_rhs);
       }
+
+    // TODO: I don't think you actually need the following. You've
+    // already dealt with boundary values in the 'constraints' object.
 
     // Here we interpolate and apply boundary values.
     std::map<types::global_dof_index, double> boundary_values;
@@ -652,57 +755,70 @@ namespace Step93
                                        system_rhs);
   }
 
-  // The solve() function works similar to how it does in step-6
-  // and step-8, except we need to use a different solver because
-  // the point we hope to find is a saddle point. So, the best
-  // choice of solver is a SolverMinRes. This solver could be
-  // improved with the use of preconditioners, but we don't do
-  // that here for simplicity (see Possibilities for extension).
-  // Included also is a commented direct solver, which can be
-  // faster when the number of dofs is small.
+
+  // @sect4{Step93::solve()}
+
+  // The solve() function works similar to how it is done in step-6
+  // and step-8, except we need to use a different solver because the
+  // linear problem we are trying to solve is a saddle point problem
+  // for which the Conjugate Gradient algorithm is not
+  // applicable. But, because the matrix is symmetric, we can use
+  // SolverMinRes, an iterative solver specialized for symmetric
+  // indefinite problems. This solver could be improved with the use
+  // of preconditioners, but we don't do that here for simplicity (see
+  // the Possibilities for Extensions section below).
+  //
+  // As you will see in the output, given that we are not using a
+  // preconditioner, we need a *lot* of iterations to solve this
+  // linear system. We set the maximum to one million, more than we
+  // need of course, but an indication that this is not an efficient
+  // solver. For smaller problems, one can also use a direct solver
+  // (see step-29) for which you would just replace the main part of
+  // this function by the following three lines of code:
+  //
+  //   `SparseDirectUMFPACK direct_solver;`
+  //
+  //   `direct_solver.initialize(system_matrix);`
+  //
+  //   `direct_solver.vmult(solution, system_rhs);`
   template <int dim>
   void Step93<dim>::solve()
   {
-    // Notice that we also time how long this process takes (below).
-    std::cout << "Beginning solve" << std::endl;
+    std::cout << "Beginning solve..." << std::endl;
     Timer timer;
 
-    SolverControl solver_control(5'000'000, 1e-6 * system_rhs.l2_norm());
+    SolverControl solver_control(1'000'000, 1e-6 * system_rhs.l2_norm());
     SolverMinRes<Vector<double>> solver(solver_control);
 
     solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
 
-    // Included also is code to use a direct solver rather than a CG solver
-    // (below). Comment out the above block and uncomment this block to use it.
-    /* SparseDirectUMFPACK direct_solver;
-    direct_solver.initialize(system_matrix);
-    direct_solver.vmult(solution, system_rhs); */
-
-    // Finally, we stop the timer and output to the console.
     timer.stop();
     std::cout << "Wall time: " << timer.wall_time() << "s" << std::endl;
     std::cout << "Solved in " << solver_control.last_step()
               << " MINRES iterations." << std::endl;
   }
 
-  // The output_results() function is a bit more robust for this program than
-  // is typical. This is because, in order to visualize the heat functions,
-  // we need to do extra work and interpolate them onto a mesh. We do this
-  // by instantiating a new DoFHandler object and then using the helper
+
+  // @sect4{Step93::output_results()}
+
+  // The `output_results()` function is a bit more robust for this program than
+  // is typical. This is because, in order to visualize the heat sources we have
+  // optimized, we need to do extra work and interpolate them onto a mesh. We do
+  // this by instantiating a new DoFHandler object and then using the helper
   // function VectorTools::interpolate().
+  //
+  // The top of the function is as always when using vector-valued
+  // elements (see, for example, step-22) and simply outputs all of
+  // the solution variables on the mesh cells they are defined on:
   template <int dim>
   void Step93<dim>::output_results() const
   {
-    // The beginning part is standard for vector valued problems (cf. step-8)
-    std::vector<std::string> solution_names(1, "u");
-    solution_names.emplace_back("l");
-    solution_names.emplace_back("c");
+    const std::vector<std::string> solution_names = {"u", "lambda", "c"};
 
-    std::vector<DataComponentInterpretation::DataComponentInterpretation>
-      interpretation(1, DataComponentInterpretation::component_is_scalar);
-    interpretation.push_back(DataComponentInterpretation::component_is_scalar);
-    interpretation.push_back(DataComponentInterpretation::component_is_scalar);
-
+    const std::vector<DataComponentInterpretation::DataComponentInterpretation>
+      interpretation = {DataComponentInterpretation::component_is_scalar,
+                        DataComponentInterpretation::component_is_scalar,
+                        DataComponentInterpretation::component_is_scalar};
 
     DataOut<dim> data_out;
     data_out.add_data_vector(dof_handler,
@@ -710,33 +826,47 @@ namespace Step93
                              solution_names,
                              interpretation);
 
-    // Now, we create a new dummy dof handler to output the target function and
-    // heat plate values
+    // The non-local degrees of freedom are of course defined on the
+    // first several cells, but at least logically are considered to
+    // live everywhere (or, if you prefer, nowhere at all since they
+    // do not represent spatial functions). But, conceptually, we use
+    // them as multipliers for the heat sources, and so while the
+    // coefficients $C^k$ are non-local, the heat source $\sum_k C^k
+    // f_k(\mathbf x)$ *is* a spatially variable function. It would be
+    // nice if we could visualize that as well. The same is true for
+    // the target heat distribution $\bar u$ we are trying to match.
+    //
+    // To do so, we
+    // create a new dummy dof handler to output the target function
+    // and heat plate values, and associate it with
+    // a finite element with a degree that matches what we used to solve for $u$
+    // and $\lambda$, although in reality this is an arbitrary choice:
     DoFHandler<dim> toy_dof_handler(triangulation);
 
-    // We use a finite element degree that matches what we used to solve for u
-    // and l, although in reality this is an arbitrary choice
     const FE_Q<dim> toy_fe(2);
     toy_dof_handler.distribute_dofs(toy_fe);
 
-    // To get started with the visualization, we need a vector which stores the
-    // interpolated target function. We create the vector, interpolate it onto
-    // the mesh, then add the data to our data_out object.
+    // To get started with the visualization, we need a vector which
+    // stores the interpolated target function. We create the vector,
+    // interpolate the target function $\bar u$ onto the mesh, then
+    // add the data to our data_out object.
     Vector<double> target(toy_dof_handler.n_dofs());
     VectorTools::interpolate(toy_dof_handler, target_function, target);
-    data_out.add_data_vector(toy_dof_handler, target, "TargetFunction");
+    data_out.add_data_vector(toy_dof_handler, target, "u_bar");
 
-    // Next, we create a vector which will store the sum of all the heat
-    // functions.
+    // In order to visualize the sum of the heat sources $\sum_k C^k
+    // f_k(\mathbf x)$, we create a vector which will store the
+    // interpolated values of this function.  Then, we loop through
+    // the heat functions, create a vector to store the interpolated
+    // data, call the VectorTools::interpolate() function to fill the
+    // vector, multiply the interpolated data by the nonlocal dof
+    // value $C^k$ (so that the heat plate is set to the correct
+    // temperature), and then add this data to the sum of heat
+    // sources. Because we can, we also add the vector for each source
+    // individuall to the DataOut object so that they can be
+    // visualized individually.
     Vector<double> full_heat_profile(toy_dof_handler.n_dofs());
 
-    // Then, we loop through the heat functions, create a vector to store
-    // the interpolated data, call the interpolate() function to fill the
-    // vector, multiply the interpolated data by the nonlocal dof value
-    //(so that the heat plate is set to the correct temperature), and
-    // then add this data to the data_out object. We also add this data
-    // vector to the full_heat_profile vector, which will display all
-    // the heat functions together at the end.
     for (unsigned int i = 0; i < heat_functions.size(); ++i)
       {
         Vector<double> hot_plate_i(toy_dof_handler.n_dofs());
@@ -746,18 +876,15 @@ namespace Step93
                                  hot_plate_i);
 
         hot_plate_i *= solution[nonlocal_dofs[i]];
-
-        // Here we iteratively name the heat function data
-        std::string data_name = "Heat_Source_" + Utilities::int_to_string(i);
-
-        data_out.add_data_vector(toy_dof_handler, hot_plate_i, data_name);
-
-        // And then add each individual heat function to the total profile
         full_heat_profile += hot_plate_i;
+
+        const std::string data_name =
+          "Heat_Source_" + Utilities::int_to_string(i);
+        data_out.add_data_vector(toy_dof_handler, hot_plate_i, data_name);
       }
 
     // Once all the heat functions have been combined, we add them to the
-    // data_out object
+    // data_out object, and output everything into a file:
     data_out.add_data_vector(toy_dof_handler,
                              full_heat_profile,
                              "Full_Heat_Profile");
@@ -767,8 +894,8 @@ namespace Step93
     std::ofstream output("solution.vtu");
     data_out.write_vtu(output);
 
-    // Finally, we output the temperature settings to the console
-    std::cout << "The c coefficients were " << std::endl;
+    // Finally, we output the nonlocal coefficient values to the console:
+    std::cout << "The c coefficients are " << std::endl;
     for (long unsigned int i = 0; i < nonlocal_dofs.size(); ++i)
       {
         std::cout << "\tc" << i + 1 << ": " << solution[nonlocal_dofs[i]]
@@ -776,7 +903,10 @@ namespace Step93
       }
   }
 
-  // The run() function runs through each step of the program, nothing new here
+
+  // @sect4{Step93::run()}
+
+  // The run() function runs through each step of the program, nothing new here:
   template <int dim>
   void Step93<dim>::run()
   {
@@ -789,16 +919,22 @@ namespace Step93
 } // namespace Step93
 
 
+// @sect3{The main() function}
+
+// The `main()` function looks essentially like that of most other tutorial
+// programs.
 int main()
 {
   try
     {
       using namespace dealii;
 
-      // In main(), we create integer which stores the dimension for the
-      // problem. We use this in the loop below and in instantiating the Step93
-      // object, so it gets stored in a variable
       const unsigned int dim = 2;
+
+      // TODO: I think this would be better placed in the
+      // constructor. All of the other set-up happens there, it's not
+      // clear to me why this one piece of information should be set up
+      // here.
 
       // We also use the following small piece of code to construct a center for
       // the target function dependent on the dimension of the problem. The
